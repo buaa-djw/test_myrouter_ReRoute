@@ -92,6 +92,7 @@ struct NetDelaySummary
     int max_delay_pin_index = -1;
     std::string max_delay_pin_name;
     int expected_sink_count = 0;
+    int pin_count = 0;
     int mapped_sink_count = 0;
     int unmapped_sink_count = 0;
     std::vector<SinkDelayInfo> sink_delays;

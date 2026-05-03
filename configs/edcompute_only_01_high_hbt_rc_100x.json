@@ -1,0 +1,47 @@
+{
+  "experiment_name": "edcompute_only_01_high_hbt_rc_100x",
+  "benchmark": "gcd",
+  "cost_mode": "proposed",
+  "input": {
+    "common_lef": "test/asap7_nangate45_2A6M10M.lef",
+    "hbt_lef": "test/asap7_nangate45_10M10M.hbPitch_0p2.lef",
+    "upper_lef": "test/asap7sc7p5t_28_R_1x_220121a.upper.processed.lef",
+    "bottom_lef": "test/NangateOpenCellLibrary.macro.mod.bottom.processed.lef",
+    "def_file": "test/gcd.def"
+  },
+  "output": {
+    "output_dir": "results/edcompute_only_01_high_hbt_rc_100x",
+    "enable_plot_generation": false,
+    "dump_2d_plot_data": false,
+    "dump_3d_plot_data": true
+  },
+  "pd_tree": {
+    "max_nets": -1,
+    "max_candidate_parents": 64,
+    "max_candidate_hbts": 128,
+    "beam_width_3d": 4,
+    "beam_branch_candidates_3d": 6,
+    "max_local_hbt_candidates": 24,
+    "max_hbt_nearest_k": 16,
+    "verbose": true
+  },
+  "report_cost": {
+    "max_hbt_per_path": 1,
+    "max_hbt_per_net": 2
+  },
+  "rc": {
+    "source_res": 50.0,
+    "default_sink_cap": 0.001,
+    "hbt_res": 5.0,
+    "hbt_cap": 0.001,
+    "hbt_rc_scale": 1.0
+  },
+  "edcompute_rc": {
+    "override": true,
+    "source_res": 50.0,
+    "default_sink_cap": 0.001,
+    "hbt_res": 5.0,
+    "hbt_cap": 0.001,
+    "hbt_rc_scale": 100.0
+  }
+}
