@@ -11,7 +11,7 @@
     "extra_lefs": []
   },
   "output": {
-    "output_dir": "results/gcd_04_timing_aggressive"
+    "output_dir": "results_reroute/gcd_04_timing_aggressive"
   },
   "pd_tree": {
     "max_nets": -1,

@@ -11,7 +11,7 @@
     "extra_lefs": []
   },
   "output": {
-    "output_dir": "results/gcd_03_hbt_conservative"
+    "output_dir": "results_reroute/gcd_03_hbt_conservative"
   },
   "pd_tree": {
     "max_nets": -1,

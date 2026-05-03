@@ -1,5 +1,5 @@
 {
-  "experiment_name": "gcd_proposed_with_2d_plots",
+  "experiment_name": "gcd_16_proposed_with_2d_plots",
   "benchmark": "gcd",
   "cost_mode": "proposed",
   "input": {
@@ -11,7 +11,7 @@
     "extra_lefs": []
   },
   "output": {
-    "output_dir": "results/gcd_proposed_with_2d_plots",
+    "output_dir": "results_reroute/gcd_16_proposed_with_2d_plots",
     "dump_2d_plot_data": true,
     "dump_3d_plot_data": true
   },

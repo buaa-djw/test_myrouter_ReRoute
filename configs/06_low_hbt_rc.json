@@ -11,7 +11,7 @@
     "extra_lefs": []
   },
   "output": {
-    "output_dir": "results/gcd_06_low_hbt_rc"
+    "output_dir": "results_reroute/gcd_06_low_hbt_rc"
   },
   "pd_tree": {
     "max_nets": -1,

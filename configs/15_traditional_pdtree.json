@@ -1,5 +1,5 @@
 {
-  "experiment_name": "gcd_traditional_pdtree",
+  "experiment_name": "gcd_15_traditional_pdtree",
   "benchmark": "gcd",
   "cost_mode": "traditional_pdtree",
   "input": {
@@ -11,7 +11,7 @@
     "extra_lefs": []
   },
   "output": {
-    "output_dir": "results/gcd_traditional_pdtree",
+    "output_dir": "results_reroute/gcd_15_traditional_pdtree",
     "dump_2d_plot_data": false,
     "dump_3d_plot_data": true
   },

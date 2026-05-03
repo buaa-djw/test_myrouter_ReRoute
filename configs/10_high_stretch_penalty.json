@@ -11,7 +11,7 @@
     "extra_lefs": []
   },
   "output": {
-    "output_dir": "results/gcd_10_high_stretch_penalty"
+    "output_dir": "results_reroute/gcd_10_high_stretch_penalty"
   },
   "pd_tree": {
     "max_nets": -1,

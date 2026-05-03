@@ -1,5 +1,5 @@
 {
-  "experiment_name": "gcd_top_rc_high",
+  "experiment_name": "gcd_13_top_rc_high",
   "benchmark": "gcd",
   "cost_mode": "proposed",
   "input": {
@@ -11,7 +11,7 @@
     "extra_lefs": []
   },
   "output": {
-    "output_dir": "results/gcd_top_rc_high",
+    "output_dir": "results_reroute/gcd_13_top_rc_high",
     "dump_2d_plot_data": false,
     "dump_3d_plot_data": true
   },

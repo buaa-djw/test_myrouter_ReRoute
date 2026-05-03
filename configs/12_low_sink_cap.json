@@ -1,5 +1,5 @@
 {
-  "experiment_name": "gcd_low_sink_cap",
+  "experiment_name": "gcd_12_low_sink_cap",
   "benchmark": "gcd",
   "cost_mode": "proposed",
   "input": {
@@ -11,7 +11,7 @@
     "extra_lefs": []
   },
   "output": {
-    "output_dir": "results/gcd_low_sink_cap",
+    "output_dir": "results_reroute/gcd_12_low_sink_cap",
     "dump_2d_plot_data": false,
     "dump_3d_plot_data": true
   },

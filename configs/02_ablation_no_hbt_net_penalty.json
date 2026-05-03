@@ -11,7 +11,7 @@
     "extra_lefs": []
   },
   "output": {
-    "output_dir": "results/gcd_02_ablation_no_hbt_net_penalty"
+    "output_dir": "results_reroute/gcd_02_ablation_no_hbt_net_penalty"
   },
   "pd_tree": {
     "max_nets": -1,

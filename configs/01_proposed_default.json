@@ -11,7 +11,7 @@
     "extra_lefs": []
   },
   "output": {
-    "output_dir": "results/gcd_01_proposed_default"
+    "output_dir": "results_reroute/gcd_01_proposed_default"
   },
   "pd_tree": {
     "max_nets": -1,
