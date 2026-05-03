@@ -40,6 +40,14 @@ struct ExperimentConfig {
         double bottom_wire_r_scale = 1;
         double bottom_wire_c_scale = 1;
     } rc;
+    struct EDComputeRC {
+        bool override_enable = false;
+        double source_res = 50;
+        double default_sink_cap = 0.001;
+        double hbt_res = 5;
+        double hbt_cap = 0.001;
+        double hbt_rc_scale = 1;
+    } edcompute_rc;
     PDTreeRouter::TraditionalPDTreeParams traditional_pdtree;
     struct Debug {
         bool dump_candidate_cost = false;

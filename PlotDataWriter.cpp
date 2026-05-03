@@ -62,7 +62,7 @@ void writeNetPlotData(const std::string& root_dir, const NetRouteResult& result)
     j["route_hbt_path_penalty_delay"] = result.route_hbt_path_penalty_delay;
     j["route_stretch_penalty_delay"] = result.route_stretch_penalty_delay;
     j["wirelength"] = computeWirelength(result);
-    j["cost_mode"] = "unknown";
+    j["cost_mode"] = result.cost_mode;
     int top_wl = 0;
     int bottom_wl = 0;
     int hbt_count = 0;
@@ -84,6 +84,13 @@ void writeNetPlotData(const std::string& root_dir, const NetRouteResult& result)
     j["avg_sink_delay"] = result.delay_summary.avg_sink_delay;
     j["max_sink_delay"] = result.delay_summary.max_sink_delay;
     j["delay_ready"] = result.delay_summary.ready;
+    j["delay_status"] = result.delay_summary.status;
+    j["delay_fail_reason"] = result.delay_summary.fail_reason;
+    j["expected_sink_count"] = result.delay_summary.expected_sink_count;
+    j["mapped_sink_count"] = result.delay_summary.mapped_sink_count;
+    j["unmapped_sink_count"] = result.delay_summary.unmapped_sink_count;
+    j["single_pin_net"] = result.delay_summary.single_pin_net;
+    j["ed_hbt_delay_contrib"] = result.delay_summary.ed_hbt_delay_contrib;
     j["validation"] = {{"valid", result.validation.valid}, {"errors", result.validation.errors}};
     j["points"] = json::array();
     j["segments"] = json::array();
