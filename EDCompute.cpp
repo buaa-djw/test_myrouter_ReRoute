@@ -150,21 +150,28 @@ bool EDCompute::annotateNetDelay(const Net& net, NetRouteResult& result) const
         }
     }
 
+    int mapped_sinks = 0;
     for (int pin_idx = 0; pin_idx < static_cast<int>(net.pins.size()); ++pin_idx) {
         if (pin_idx == root_pin) {
             continue;
         }
         if (!isValidTreeIndex(result, pin_to_tree[pin_idx])) {
+            result.delay_summary.mapped_sink_count = mapped_sinks;
+            result.delay_summary.unmapped_sink_count = result.delay_summary.expected_sink_count - mapped_sinks;
             return fail("edcompute_unmapped_sink",
                         "sink pin is not mapped to any tree node: index=" + std::to_string(pin_idx) +
                             " name=" + net.pins[pin_idx].name);
         }
+        ++mapped_sinks;
     }
+    result.delay_summary.mapped_sink_count = mapped_sinks;
+    result.delay_summary.unmapped_sink_count = result.delay_summary.expected_sink_count - mapped_sinks;
 
     // Single-pin net: valid and zero-delay by definition.
     if (net.pins.size() <= 1) {
         result.delay_summary.ready = true;
         result.delay_summary.status = "ok";
+        result.delay_summary.single_pin_net = true;
         result.delay_summary.avg_sink_delay = 0.0;
         result.delay_summary.max_sink_delay = 0.0;
         result.delay_summary.total_tree_cap = 0.0;
@@ -203,6 +210,8 @@ bool EDCompute::annotateNetDelay(const Net& net, NetRouteResult& result) const
 
     std::vector<double> subtree_cap(n, 0.0);
     std::vector<double> delay(n, 0.0);
+    double ed_wire_delay_contrib = 0.0;
+    double ed_hbt_delay_contrib = 0.0;
 
     double total_wire_cap = 0.0;
     double total_hbt_cap = 0.0;
@@ -245,6 +254,8 @@ bool EDCompute::annotateNetDelay(const Net& net, NetRouteResult& result) const
             const double downstream_after_wire = subtree_cap[v] + hbt_cap;
             const double wire_term = wire_res * (downstream_after_wire + 0.5 * wire_cap);
             const double hbt_term = hbt_res * (subtree_cap[v] + hbt_cap);
+            ed_wire_delay_contrib += wire_term;
+            ed_hbt_delay_contrib += hbt_term;
             delay[v] = delay[u] + wire_term + hbt_term;
         }
     }
@@ -295,6 +306,11 @@ bool EDCompute::annotateNetDelay(const Net& net, NetRouteResult& result) const
     result.delay_summary.total_load_cap = total_load_cap;
     result.delay_summary.total_hbt_cap = total_hbt_cap;
     result.delay_summary.total_tree_cap = subtree_cap[root_idx];
+    result.delay_summary.ed_driver_delay_contrib = delay[root_idx];
+    result.delay_summary.ed_wire_delay_contrib = ed_wire_delay_contrib;
+    result.delay_summary.ed_hbt_delay_contrib = ed_hbt_delay_contrib;
+    result.delay_summary.ed_total_delay_contrib = result.delay_summary.ed_driver_delay_contrib
+        + result.delay_summary.ed_wire_delay_contrib + result.delay_summary.ed_hbt_delay_contrib;
 
     result.delay_summary.sink_path_lengths.clear();
     result.delay_summary.sink_hbt_counts.clear();
@@ -307,3 +323,4 @@ bool EDCompute::annotateNetDelay(const Net& net, NetRouteResult& result) const
 
     return true;
 }
+    result.delay_summary.expected_sink_count = std::max(0, static_cast<int>(net.pins.size()) - 1);

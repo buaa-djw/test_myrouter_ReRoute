@@ -102,10 +102,18 @@ bool ExperimentConfig::loadFromFile(const std::string& p, ExperimentConfig& c, s
         c.traditional_pdtree.max_hbt_per_net = gi(t, "max_hbt_per_net", c.traditional_pdtree.max_hbt_per_net);
         c.traditional_pdtree.max_hbt_per_path = gi(t, "max_hbt_per_path", c.traditional_pdtree.max_hbt_per_path);
     }
+    if (j.contains("edcompute_rc")) {
+        auto& ecrc = j["edcompute_rc"];
+        c.edcompute_rc.override_enable = gb(ecrc, "override", c.edcompute_rc.override_enable);
+        c.edcompute_rc.source_res = gd(ecrc, "source_res", c.edcompute_rc.source_res);
+        c.edcompute_rc.default_sink_cap = gd(ecrc, "default_sink_cap", c.edcompute_rc.default_sink_cap);
+        c.edcompute_rc.hbt_res = gd(ecrc, "hbt_res", c.edcompute_rc.hbt_res);
+        c.edcompute_rc.hbt_cap = gd(ecrc, "hbt_cap", c.edcompute_rc.hbt_cap);
+        c.edcompute_rc.hbt_rc_scale = gd(ecrc, "hbt_rc_scale", c.edcompute_rc.hbt_rc_scale);
+    }
     return true;
 }
 
 bool ExperimentConfig::validate(std::string& e) const { if(input.common_lef.empty()||input.hbt_lef.empty()||input.upper_lef.empty()||input.bottom_lef.empty()||input.def_file.empty()){e="input path missing"; return false;} return true; }
 PDTreeRouter::Params ExperimentConfig::buildRouterParams() const { PDTreeRouter::Params p; p.source_res=rc.source_res; p.default_sink_cap=rc.default_sink_cap; p.hbt_res=rc.hbt_res*rc.hbt_rc_scale; p.hbt_cap=rc.hbt_cap*rc.hbt_rc_scale; p.max_candidate_parents=pd_tree.max_candidate_parents; p.max_candidate_hbts=pd_tree.max_candidate_hbts; p.beam_width_3d=pd_tree.beam_width_3d; p.beam_branch_candidates_3d=pd_tree.beam_branch_candidates_3d; p.max_local_hbt_candidates=pd_tree.max_local_hbt_candidates; p.max_hbt_nearest_k=pd_tree.max_hbt_nearest_k; p.verbose=pd_tree.verbose; p.enable_hbt_inner_node_optimization=false; p.dump_candidate_cost_debug=debug.dump_candidate_cost; p.report_cost=report_cost; p.top_wire_r_scale = rc.top_wire_r_scale; p.top_wire_c_scale = rc.top_wire_c_scale; p.bottom_wire_r_scale = rc.bottom_wire_r_scale; p.bottom_wire_c_scale = rc.bottom_wire_c_scale; p.traditional_pdtree = traditional_pdtree; if (cost_mode == "traditional_pdtree") { p.cost_mode = PDTreeRouter::CostMode::kTraditionalPDTree; } else if (cost_mode == "baseline_rc_only") { p.cost_mode = PDTreeRouter::CostMode::kBaselineRcOnly; } else { p.cost_mode = PDTreeRouter::CostMode::kProposed; } return p; }
 std::string ExperimentConfig::dumpJsonString() const { json j; j["experiment_name"]=experiment_name; j["benchmark"]=benchmark; return j.dump(2); }
-

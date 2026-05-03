@@ -17,6 +17,7 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
+#include <cmath>
 
 namespace fs = std::filesystem;
 
@@ -108,6 +109,24 @@ fs::path findPlotScript(const std::string& cfg_path, const std::string& argv0)
 }
 
 }  // namespace
+
+static void runEdcomputeSanityChecks(const std::vector<NetRouteResult>& results)
+{
+    for (const auto& r : results) {
+        if (r.success && r.delay_summary.ready) {
+            if (!std::isfinite(r.delay_summary.avg_sink_delay) || !std::isfinite(r.delay_summary.max_sink_delay)) {
+                std::cerr << "[selfcheck] invalid numeric delay on net=" << r.net_name << "\n";
+            }
+            if (r.delay_summary.max_sink_delay < r.delay_summary.avg_sink_delay) {
+                std::cerr << "[selfcheck] max < avg on net=" << r.net_name << "\n";
+            }
+        }
+        int hbt_count = 0;
+        for (const auto& s : r.segments) hbt_count += s.uses_hbt ? 1 : 0;
+        if (!r.is_3d && hbt_count != 0) std::cerr << "[selfcheck] 2D net has HBT: " << r.net_name << "\n";
+        if (r.is_3d && hbt_count <= 0) std::cerr << "[selfcheck] 3D net has no HBT: " << r.net_name << "\n";
+    }
+}
 
 int main(int argc, char** argv)
 {
@@ -228,13 +247,18 @@ int main(int argc, char** argv)
     // ------------------------------------------------------------
     // 5. Annotate delay by net name (results order may differ from db.nets order).
     // ------------------------------------------------------------
+    const bool use_ed_override = cfg.edcompute_rc.override_enable;
+    const double ed_hbt_res = use_ed_override ? cfg.edcompute_rc.hbt_res * cfg.edcompute_rc.hbt_rc_scale : scaled_hbt_res;
+    const double ed_hbt_cap = use_ed_override ? cfg.edcompute_rc.hbt_cap * cfg.edcompute_rc.hbt_rc_scale : scaled_hbt_cap;
+    const double ed_source_res = use_ed_override ? cfg.edcompute_rc.source_res : cfg.rc.source_res;
+    const double ed_sink_cap = use_ed_override ? cfg.edcompute_rc.default_sink_cap : cfg.rc.default_sink_cap;
     EDCompute ed(
         db,
         EDCompute::Params{
-            cfg.rc.default_sink_cap,
-            cfg.rc.source_res,
-            scaled_hbt_res,
-            scaled_hbt_cap,
+            ed_sink_cap,
+            ed_source_res,
+            ed_hbt_res,
+            ed_hbt_cap,
             false
         }
     );
@@ -243,6 +267,7 @@ int main(int argc, char** argv)
     for (const Net& net : db.nets) {
         net_by_name[net.name] = &net;
     }
+    runEdcomputeSanityChecks(results);
 
     for (NetRouteResult& result : results) {
         auto it = net_by_name.find(result.net_name);

@@ -84,12 +84,16 @@ struct SinkDelayInfo
 struct NetDelaySummary
 {
     bool ready = false;
+    bool single_pin_net = false;
     std::string status = "uninitialized";
     std::string fail_reason;
     double avg_sink_delay = 0.0;
     double max_sink_delay = 0.0;
     int max_delay_pin_index = -1;
     std::string max_delay_pin_name;
+    int expected_sink_count = 0;
+    int mapped_sink_count = 0;
+    int unmapped_sink_count = 0;
     std::vector<SinkDelayInfo> sink_delays;
     std::vector<double> sink_path_lengths;
     std::vector<int> sink_hbt_counts;
@@ -97,6 +101,10 @@ struct NetDelaySummary
     double total_load_cap = 0.0;
     double total_hbt_cap = 0.0;
     double total_tree_cap = 0.0;
+    double ed_driver_delay_contrib = 0.0;
+    double ed_wire_delay_contrib = 0.0;
+    double ed_hbt_delay_contrib = 0.0;
+    double ed_total_delay_contrib = 0.0;
 };
 
 struct RouteValidationResult
@@ -131,6 +139,7 @@ struct NetRouteResult
     double route_hbt_net_quad_penalty_delay = 0.0;
     double route_hbt_path_penalty_delay = 0.0;
     double route_stretch_penalty_delay = 0.0;
+    std::string cost_mode = "unknown";
 
     // Per-net delay annotation result (filled by EDCompute).
     NetDelaySummary delay_summary;

@@ -203,6 +203,7 @@ NetRouteResult PDTreeRouter::routeSingleNet(const Net& net)
     NetRouteResult skipped;
     skipped.net_name = net.name;
     skipped.is_3d = net.is_3d;
+    skipped.cost_mode = costModeToString(params_.cost_mode);
 
     if (!shouldRouteAsSignalNet(net)) {
         if (params_.verbose) {
@@ -271,6 +272,7 @@ NetRouteResult PDTreeRouter::route2DNet(const Net& net)
     result.net_name = net.name;
     result.is_3d = false;
     result.root_tree_index = 0;
+    result.cost_mode = costModeToString(params_.cost_mode);
 
     if (net.pins.size() <= 1) {
         result.success = true;
@@ -347,6 +349,7 @@ NetRouteResult PDTreeRouter::route3DNet(const Net& net)
     empty.net_name = net.name;
     empty.is_3d = true;
     empty.root_tree_index = 0;
+    empty.cost_mode = costModeToString(params_.cost_mode);
 
     if (net.pins.size() <= 1) {
         empty.success = true;
@@ -370,6 +373,7 @@ NetRouteResult PDTreeRouter::route3DNet(const Net& net)
     seed.result.net_name = net.name;
     seed.result.is_3d = true;
     seed.result.root_tree_index = 0;
+    seed.result.cost_mode = costModeToString(params_.cost_mode);
     TreeNodeState root;
     root.pin_index = src;
     root.point = pinToPoint(net.pins[src]);
