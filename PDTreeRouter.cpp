@@ -238,11 +238,13 @@ double PDTreeRouter::evaluateObjectivePublic(const Net& net,
 bool PDTreeRouter::annotateDelayPublic(const Net& net,
                                        NetRouteResult& result) const
 {
-    EDCompute ed(db_, EDCompute::Params{params_.default_sink_cap,
-                                        params_.source_res,
-                                        params_.hbt_res,
-                                        params_.hbt_cap,
-                                        false});
+    EDCompute::Params ed_params;
+    ed_params.default_sink_cap = params_.default_sink_cap;
+    ed_params.default_driver_res = params_.source_res;
+    ed_params.default_hbt_res = params_.hbt_res;
+    ed_params.default_hbt_cap = params_.hbt_cap;
+    ed_params.verbose = false;
+    EDCompute ed(db_, ed_params);
     return ed.annotateNetDelay(net, result);
 }
 
@@ -1444,11 +1446,13 @@ PDTreeRouter::TimingSummary PDTreeRouter::evaluateTimingSummary(const Net& net,
         return t;
     }
 
-    EDCompute ed(db_, EDCompute::Params{params_.default_sink_cap,
-                                        params_.source_res,
-                                        params_.hbt_res,
-                                        params_.hbt_cap,
-                                        false});
+    EDCompute::Params ed_params;
+    ed_params.default_sink_cap = params_.default_sink_cap;
+    ed_params.default_driver_res = params_.source_res;
+    ed_params.default_hbt_res = params_.hbt_res;
+    ed_params.default_hbt_cap = params_.hbt_cap;
+    ed_params.verbose = false;
+    EDCompute ed(db_, ed_params);
     NetRouteResult copied = result;
     copied.success = true;
     (void) ed.annotateNetDelay(net, copied);
@@ -1608,8 +1612,8 @@ bool PDTreeRouter::optimizeHBTInnerNodesForState(const Net& net,
         const auto& slot = grid_.hbt.getSlots().at(node.assigned_hbt_id);
         node.point.x = slot.x;
         node.point.y = slot.y;
-        node.hbt_res = db_.getHBTResistanceOrDefault();
-        node.hbt_cap = params_.hbt_cap;
+        node.hbt_res = params_.hbt_res > 0.0 ? params_.hbt_res : db_.getHBTResistanceOrDefault();
+        node.hbt_cap = params_.hbt_cap >= 0.0 ? params_.hbt_cap : db_.getHBTCapacitanceOrDefault();
         state.local_reserved_hbts.insert(node.assigned_hbt_id);
     }
     return materializeHBTNodesToSegments(net, state);
@@ -1670,7 +1674,9 @@ double PDTreeRouter::estimateHBTNodeCost(const Net& /*net*/,
     const double fanout_penalty = params_.weight_hbt_fanout * static_cast<double>(fanout);
     const double scarcity = params_.weight_hbt_scarcity * computeHBTScarcityPenalty(state.local_reserved_hbts, candidate_hbt_id);
     return params_.weight_hbt_subtree_wire * wl
-         + params_.weight_hbt_subtree_delay_proxy * (db_.getHBTResistanceOrDefault() + 0.5 * params_.hbt_cap)
+         + params_.weight_hbt_subtree_delay_proxy
+             * ((params_.hbt_res > 0.0 ? params_.hbt_res : db_.getHBTResistanceOrDefault())
+                + 0.5 * (params_.hbt_cap >= 0.0 ? params_.hbt_cap : db_.getHBTCapacitanceOrDefault()))
          + depth_penalty + stack_penalty + fanout_penalty + scarcity;
 }
 
@@ -1706,8 +1712,10 @@ bool PDTreeRouter::materializeHBTNodesToSegments(const Net& /*net*/, PartialRout
         node.point.x = s.x;
         node.point.y = s.y;
         node.incoming_hbt_count = 1;
-        node.incoming_hbt_res = node.hbt_res > 0.0 ? node.hbt_res : db_.getHBTResistanceOrDefault();
-        node.incoming_hbt_cap = node.hbt_cap > 0.0 ? node.hbt_cap : params_.hbt_cap;
+        node.incoming_hbt_res = node.hbt_res > 0.0 ? node.hbt_res
+                                                    : (params_.hbt_res > 0.0 ? params_.hbt_res : db_.getHBTResistanceOrDefault());
+        node.incoming_hbt_cap = node.hbt_cap >= 0.0 ? node.hbt_cap
+                                                     : (params_.hbt_cap >= 0.0 ? params_.hbt_cap : db_.getHBTCapacitanceOrDefault());
     }
     return true;
 }
@@ -1902,8 +1910,8 @@ bool PDTreeRouter::commitCrossDieBranch(NetRouteResult& result,
     hbt_node.hbt_from_die = parent_die;
     hbt_node.hbt_to_die = sink_die;
     hbt_node.incoming_hbt_count = 1;
-    hbt_node.incoming_hbt_res = params_.hbt_res;
-    hbt_node.incoming_hbt_cap = params_.hbt_cap;
+    hbt_node.incoming_hbt_res = params_.hbt_res > 0.0 ? params_.hbt_res : db_.getHBTResistanceOrDefault();
+    hbt_node.incoming_hbt_cap = params_.hbt_cap >= 0.0 ? params_.hbt_cap : db_.getHBTCapacitanceOrDefault();
     hbt_node.incoming_segment_begin = seg_begin_hbt;
     hbt_node.incoming_segment_count = static_cast<int>(parent_to_hbt.size()) + 1;
     const TreeNodeState& p = result.tree_nodes[parent_tree_index];
@@ -1990,8 +1998,8 @@ bool PDTreeRouter::commit3DBranchWithHBTNode(NetRouteResult& result,
     hbt_node.hbt_res = params_.hbt_res;
     hbt_node.hbt_cap = params_.hbt_cap;
     hbt_node.incoming_hbt_count = 1;
-    hbt_node.incoming_hbt_res = params_.hbt_res;
-    hbt_node.incoming_hbt_cap = params_.hbt_cap;
+    hbt_node.incoming_hbt_res = params_.hbt_res > 0.0 ? params_.hbt_res : db_.getHBTResistanceOrDefault();
+    hbt_node.incoming_hbt_cap = params_.hbt_cap >= 0.0 ? params_.hbt_cap : db_.getHBTCapacitanceOrDefault();
     hbt_node.incoming_segment_begin = seg_begin_hbt;
     hbt_node.incoming_segment_count = static_cast<int>(wire_to_hbt.size()) + 1;
 
@@ -2017,7 +2025,8 @@ void PDTreeRouter::commitSegments(NetRouteResult& result,
                                   const RoutedPoint& sink_attach_point,
                                   int extra_hbt_count) const
 {
-    const double hbt_res_per_crossing = db_.getHBTResistanceOrDefault();
+    const double hbt_res_per_crossing = params_.hbt_res > 0.0 ? params_.hbt_res : db_.getHBTResistanceOrDefault();
+    const double hbt_cap_per_crossing = params_.hbt_cap >= 0.0 ? params_.hbt_cap : db_.getHBTCapacitanceOrDefault();
     const int seg_begin = static_cast<int>(result.segments.size());
     result.segments.insert(result.segments.end(), segs.begin(), segs.end());
 
@@ -2040,7 +2049,7 @@ void PDTreeRouter::commitSegments(NetRouteResult& result,
             ++n.incoming_hbt_count;
             // HBT resistance priority: DB hb_layer/via first, fallback defaults second.
             n.incoming_hbt_res += hbt_res_per_crossing;
-            n.incoming_hbt_cap += params_.hbt_cap;
+            n.incoming_hbt_cap += hbt_cap_per_crossing;
             continue;
         }
 
@@ -2061,7 +2070,7 @@ void PDTreeRouter::commitSegments(NetRouteResult& result,
     if (n.incoming_hbt_count == 0 && extra_hbt_count > 0) {
         n.incoming_hbt_count = extra_hbt_count;
         n.incoming_hbt_res += hbt_res_per_crossing * static_cast<double>(extra_hbt_count);
-        n.incoming_hbt_cap += params_.hbt_cap * static_cast<double>(extra_hbt_count);
+        n.incoming_hbt_cap += hbt_cap_per_crossing * static_cast<double>(extra_hbt_count);
     }
 
     n.path_length_from_root = p.path_length_from_root + n.incoming_wire_length;

@@ -86,6 +86,7 @@ void writeExperimentSummary(const std::string& path,
     o << "router_hbt_cap=" << cfg.rc.hbt_cap * cfg.rc.hbt_rc_scale << "\n";
     o << "router_hbt_rc_scale=" << cfg.rc.hbt_rc_scale << "\n";
     o << "edcompute_rc_override=" << cfg.edcompute_rc.override_enable << "\n";
+    o << "edcompute_override_tree_hbt_rc=" << cfg.edcompute_rc.override_enable << "\n";
     o << "edcompute_hbt_res=" << (cfg.edcompute_rc.override_enable ? cfg.edcompute_rc.hbt_res * cfg.edcompute_rc.hbt_rc_scale : cfg.rc.hbt_res * cfg.rc.hbt_rc_scale) << "\n";
     o << "edcompute_hbt_cap=" << (cfg.edcompute_rc.override_enable ? cfg.edcompute_rc.hbt_cap * cfg.edcompute_rc.hbt_rc_scale : cfg.rc.hbt_cap * cfg.rc.hbt_rc_scale) << "\n";
     o << "edcompute_hbt_rc_scale=" << (cfg.edcompute_rc.override_enable ? cfg.edcompute_rc.hbt_rc_scale : cfg.rc.hbt_rc_scale) << "\n";
