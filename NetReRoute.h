@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Grid.h"
+#include "HBTResourceManager.h"
 #include "PDTreeRouter.h"
 #include "RouterDB.h"
 
@@ -15,7 +16,15 @@ public:
         int max_iterations_per_net = 10;
         double max_wirelength_growth_ratio = 0.05;
         int max_extra_hbts = 0;
-        bool optimize_for_max_delay = true;
+        bool enable_reattach = true;
+        bool enable_ripup = false;
+        bool enable_hbt_swap = false;
+        double objective_weight_max_delay = 1.0;
+        double objective_weight_avg_delay = 0.2;
+        double objective_weight_wirelength_growth = 0.05;
+        double objective_weight_hbt_count = 0.1;
+        double objective_weight_hbt_delay = 0.2;
+        int beam_width = 4;
         bool verbose = true;
     };
 
@@ -26,6 +35,16 @@ public:
         double total_avg_delay_after = 0.0;
         double total_max_delay_before = 0.0;
         double total_max_delay_after = 0.0;
+        int tried_candidates = 0;
+        int accepted_candidates = 0;
+        int rejected_by_topology = 0;
+        int rejected_by_delay = 0;
+        int rejected_by_wirelength = 0;
+        int rejected_by_hbt_conflict = 0;
+        int hbt_conflict_before = 0;
+        int hbt_conflict_after = 0;
+        double total_objective_before = 0.0;
+        double total_objective_after = 0.0;
     };
 
     struct CriticalNetRecord {
@@ -55,13 +74,14 @@ public:
     CriticalNetOptimizer(const RouterDB& db,
                          const HybridGrid& grid,
                          const PDTreeRouter& router,
+                         HBTResourceManager& hbt_manager,
                          const Params& params);
 
     OptimizationStats optimize(std::vector<NetRouteResult>& results) const;
 
 private:
     std::vector<CriticalNetRecord> collectCriticalNets(const std::vector<NetRouteResult>& results) const;
-    bool optimizeOneNet(const Net& net, NetRouteResult& result) const;
+    bool optimizeOneNet(const Net& net, NetRouteResult& result, OptimizationStats& stats) const;
 
     int findTreeNodeForPin(const NetRouteResult& result, int pin_index) const;
     bool isInSubtree(const NetRouteResult& result, int root_node, int query_node) const;
@@ -84,5 +104,6 @@ private:
     const RouterDB& db_;
     const HybridGrid& grid_;
     const PDTreeRouter& router_;
+    HBTResourceManager& hbt_manager_;
     Params params_;
 };

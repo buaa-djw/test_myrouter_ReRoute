@@ -13,6 +13,8 @@ add_executable(test_myrouter_ReRoute
   Grid.cpp
   PDTreeRouter.cpp
   EDCompute.cpp
+  HBTResourceManager.cpp
+  NetReRoute.cpp
   ExperimentConfig.cpp
   ExperimentSummaryWriter.cpp
   NetInfoWriter.cpp
