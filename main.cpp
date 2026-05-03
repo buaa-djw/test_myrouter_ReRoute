@@ -62,13 +62,16 @@ fs::path findPlotScript(const std::string& cfg_path, const std::string& argv0)
 {
     std::vector<fs::path> candidates;
 
-    // Case 1: run from src/test_myrouter_PDtree
-    candidates.emplace_back(fs::current_path() / "scripts" / "plot_nets.py");
+    // Highest priority: allow explicit override without recompiling.
+    if (const char* env_script = std::getenv("MYROUTER_PLOT_SCRIPT")) {
+        if (*env_script != '\0') {
+            candidates.emplace_back(env_script);
+        }
+    }
 
-    // Case 2: run from OpenROAD root
-    candidates.emplace_back(fs::current_path() / "src" / "test_myrouter_PDtree" / "scripts" / "plot_nets.py");
-
-    // Case 3: derive module root from config path: <module>/configs/*.json
+    // Prefer the script that belongs to the same module as the config file.
+    // Example: src/test_myrouter_ReRoute/configs/foo.json
+    //       -> src/test_myrouter_ReRoute/scripts/plot_nets.py
     if (!cfg_path.empty()) {
         fs::path cfg_abs = fs::absolute(cfg_path);
         if (cfg_abs.has_parent_path()) {
@@ -78,7 +81,7 @@ fs::path findPlotScript(const std::string& cfg_path, const std::string& argv0)
         }
     }
 
-    // Case 4: derive from executable path
+    // Derive from executable path when the executable is placed in the module dir.
     if (!argv0.empty()) {
         fs::path exe_path = fs::absolute(argv0);
         if (exe_path.has_parent_path()) {
@@ -86,8 +89,17 @@ fs::path findPlotScript(const std::string& cfg_path, const std::string& argv0)
         }
     }
 
+    // Run from src/test_myrouter_ReRoute.
+    candidates.emplace_back(fs::current_path() / "scripts" / "plot_nets.py");
+
+    // Run from OpenROAD root. Prefer ReRoute, not PDtree.
+    candidates.emplace_back(fs::current_path() / "src" / "test_myrouter_ReRoute" / "scripts" / "plot_nets.py");
+
+    // Last compatibility fallback only. Do not let PDtree shadow ReRoute.
+    candidates.emplace_back(fs::current_path() / "src" / "test_myrouter_PDtree" / "scripts" / "plot_nets.py");
+
     for (const auto& p : candidates) {
-        if (fs::exists(p)) {
+        if (fs::exists(p) && fs::is_regular_file(p)) {
             return p;
         }
     }

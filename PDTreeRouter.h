@@ -481,16 +481,6 @@ private:
     int manhattan(int x1, int y1, int x2, int y2) const;
     int manhattan(const RoutedPoint& a, const RoutedPoint& b) const;
 
-private:
-    const RouterDB& db_;
-    const HybridGrid& grid_;
-    Params params_;
-
-    // Global HBT occupancy. Ownership is only committed after one full net
-    // routes successfully to avoid cross-net contamination on failure.
-    std::vector<bool> hbt_used_;
-    std::vector<std::string> hbt_owner_;
-};
     EffectiveRC selectWireRCForSegment(DieId die,
                                        const RoutedPoint& a,
                                        const RoutedPoint& b) const;
@@ -504,3 +494,14 @@ private:
                                              bool introduces_hbt,
                                              int hbt_id,
                                              double extra_path_after_attach_dbu) const;
+
+private:
+    const RouterDB& db_;
+    const HybridGrid& grid_;
+    Params params_;
+
+    // Global HBT occupancy. Ownership is only committed after one full net
+    // routes successfully to avoid cross-net contamination on failure.
+    std::vector<bool> hbt_used_;
+    std::vector<std::string> hbt_owner_;
+};

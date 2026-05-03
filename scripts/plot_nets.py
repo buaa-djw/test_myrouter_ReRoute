@@ -184,6 +184,17 @@ def draw_points(ax, data, label_points=False):
             ax.text(x, y, z, f"{pid}", fontsize=8)
 
 
+def collect_z_values(data):
+    """Collect all z coordinates actually used in points and segments."""
+    zs = []
+    for point in data.get("points", []):
+        zs.append(safe_float(point.get("z", 0.0)))
+    for seg in data.get("segments", []):
+        zs.append(safe_float(seg.get("z1", 0.0)))
+        zs.append(safe_float(seg.get("z2", 0.0)))
+    return zs
+
+
 def set_axes_style(ax, data):
     ax.set_xlabel("x", fontsize=11, labelpad=8)
     ax.set_ylabel("y", fontsize=11, labelpad=8)
@@ -191,9 +202,19 @@ def set_axes_style(ax, data):
 
     ax.grid(True, linestyle=":", linewidth=0.5, alpha=0.7)
 
+    # Important: 2D nets may be on either top die (z=1.0) or bottom die (z=0.0).
+    # Do not clamp all 2D nets to [-0.05, 0.05], otherwise top-die wires/points
+    # are clipped out and the PNG looks empty although the JSON contains segments.
     is_3d = bool(data.get("is_3d", False))
-    if not is_3d:
-        ax.set_zlim(-0.05, 0.05)
+    zs = collect_z_values(data)
+    if not is_3d and zs:
+        zmin = min(zs)
+        zmax = max(zs)
+        if abs(zmax - zmin) < 1e-9:
+            ax.set_zlim(zmin - 0.05, zmax + 0.05)
+        else:
+            pad = max(0.05, 0.08 * (zmax - zmin))
+            ax.set_zlim(zmin - pad, zmax + pad)
 
     try:
         ax.set_box_aspect((1.2, 1.2, 0.7))
