@@ -267,9 +267,8 @@ int main(int argc, char** argv)
     for (const Net& net : db.nets) {
         net_by_name[net.name] = &net;
     }
-    runEdcomputeSanityChecks(results);
-
     for (NetRouteResult& result : results) {
+        result.cost_mode = cfg.cost_mode;
         auto it = net_by_name.find(result.net_name);
         if (it == net_by_name.end()) {
             result.success = false;
@@ -291,6 +290,8 @@ int main(int argc, char** argv)
             result.delay_summary.fail_reason = "routing result is not timing-annotatable";
         }
     }
+
+    runEdcomputeSanityChecks(results);
 
     // ------------------------------------------------------------
     // 6. Create output directories

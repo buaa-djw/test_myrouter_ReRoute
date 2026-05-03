@@ -2,10 +2,15 @@
 
 #include <cmath>
 #include <fstream>
+#include <unordered_map>
 
-void writeNetInfo(const std::string& path, const RouterDB&, const std::vector<NetRouteResult>& results)
+void writeNetInfo(const std::string& path, const RouterDB& db, const std::vector<NetRouteResult>& results)
 {
     std::ofstream o(path);
+    std::unordered_map<std::string, int> net_pin_count;
+    for (const auto& net : db.nets) {
+        net_pin_count[net.name] = static_cast<int>(net.pins.size());
+    }
     for (const auto& r : results) {
         double wirelength = 0.0;
         double top_wirelength = 0.0;
@@ -24,10 +29,11 @@ void writeNetInfo(const std::string& path, const RouterDB&, const std::vector<Ne
                 ++hbt_count;
             }
         }
+        const int pin_count = net_pin_count.count(r.net_name) ? net_pin_count[r.net_name] : r.delay_summary.pin_count;
         o << "NET " << r.net_name << "\n";
         o << "  type: " << (r.is_3d ? "3D" : "2D") << "\n";
         o << "  cost_mode: " << r.cost_mode << "\n";
-        o << "  pin_count: " << r.delay_summary.expected_sink_count + 1 << "\n";
+        o << "  pin_count: " << pin_count << "\n";
         o << "  success: " << r.success << "\n";
         o << "  status: " << r.status << "\n";
         o << "  route_cost_total: " << r.route_cost_total << "\n";
@@ -44,6 +50,7 @@ void writeNetInfo(const std::string& path, const RouterDB&, const std::vector<Ne
         o << "  hbt_count: " << hbt_count << "\n";
         o << "  avg_sink_delay: " << r.delay_summary.avg_sink_delay << "\n";
         o << "  max_sink_delay: " << r.delay_summary.max_sink_delay << "\n";
+        o << "  max_delay_pin_index: " << r.delay_summary.max_delay_pin_index << "\n";
         o << "  delay_ready: " << r.delay_summary.ready << "\n";
         o << "  delay_status: " << r.delay_summary.status << "\n";
         o << "  delay_fail_reason: " << r.delay_summary.fail_reason << "\n";

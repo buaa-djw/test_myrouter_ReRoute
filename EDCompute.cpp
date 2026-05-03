@@ -34,6 +34,8 @@ bool resolveHbtRC(const TreeNodeState& node,
     // to EDCompute defaults so older routing results can still be annotated.
     if (node.incoming_hbt_res > 0.0) {
         hbt_res = node.incoming_hbt_res;
+    } else if (node.hbt_res > 0.0) {
+        hbt_res = node.hbt_res;
     } else if (params.default_hbt_res > 0.0) {
         hbt_res = params.default_hbt_res * static_cast<double>(node.incoming_hbt_count);
     } else {
@@ -43,7 +45,9 @@ bool resolveHbtRC(const TreeNodeState& node,
 
     if (node.incoming_hbt_cap > 0.0) {
         hbt_cap = node.incoming_hbt_cap;
-    } else if (params.default_hbt_cap >= 0.0) {
+    } else if (node.hbt_cap > 0.0) {
+        hbt_cap = node.hbt_cap;
+    } else if (params.default_hbt_cap > 0.0) {
         hbt_cap = params.default_hbt_cap * static_cast<double>(node.incoming_hbt_count);
     } else {
         reason = "negative HBT capacitance and no valid default_hbt_cap";
@@ -68,6 +72,9 @@ EDCompute::EDCompute(const RouterDB& db, const Params& params)
 bool EDCompute::annotateNetDelay(const Net& net, NetRouteResult& result) const
 {
     result.delay_summary = NetDelaySummary{};
+    result.delay_summary.pin_count = static_cast<int>(net.pins.size());
+    result.delay_summary.expected_sink_count = std::max(0, static_cast<int>(net.pins.size()) - 1);
+    result.delay_summary.single_pin_net = (result.delay_summary.expected_sink_count == 0);
 
     auto fail = [&](const std::string& status, const std::string& reason) -> bool {
         result.delay_summary.ready = false;
@@ -251,8 +258,7 @@ bool EDCompute::annotateNetDelay(const Net& net, NetRouteResult& result) const
             const double hbt_res = std::max(0.0, edge_hbt_res[v]);
             const double hbt_cap = std::max(0.0, edge_hbt_cap[v]);
 
-            const double downstream_after_wire = subtree_cap[v] + hbt_cap;
-            const double wire_term = wire_res * (downstream_after_wire + 0.5 * wire_cap);
+            const double wire_term = wire_res * (subtree_cap[v] + 0.5 * wire_cap);
             const double hbt_term = hbt_res * (subtree_cap[v] + hbt_cap);
             ed_wire_delay_contrib += wire_term;
             ed_hbt_delay_contrib += hbt_term;
@@ -323,4 +329,3 @@ bool EDCompute::annotateNetDelay(const Net& net, NetRouteResult& result) const
 
     return true;
 }
-    result.delay_summary.expected_sink_count = std::max(0, static_cast<int>(net.pins.size()) - 1);

@@ -86,11 +86,15 @@ void writeNetPlotData(const std::string& root_dir, const NetRouteResult& result)
     j["delay_ready"] = result.delay_summary.ready;
     j["delay_status"] = result.delay_summary.status;
     j["delay_fail_reason"] = result.delay_summary.fail_reason;
+    j["pin_count"] = result.delay_summary.pin_count;
     j["expected_sink_count"] = result.delay_summary.expected_sink_count;
     j["mapped_sink_count"] = result.delay_summary.mapped_sink_count;
     j["unmapped_sink_count"] = result.delay_summary.unmapped_sink_count;
     j["single_pin_net"] = result.delay_summary.single_pin_net;
+    j["ed_driver_delay_contrib"] = result.delay_summary.ed_driver_delay_contrib;
+    j["ed_wire_delay_contrib"] = result.delay_summary.ed_wire_delay_contrib;
     j["ed_hbt_delay_contrib"] = result.delay_summary.ed_hbt_delay_contrib;
+    j["ed_total_delay_contrib"] = result.delay_summary.ed_total_delay_contrib;
     j["validation"] = {{"valid", result.validation.valid}, {"errors", result.validation.errors}};
     j["points"] = json::array();
     j["segments"] = json::array();
