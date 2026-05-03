@@ -253,9 +253,15 @@ int main(int argc, char** argv)
         }
 
         if (result.success && result.status != "invalid_topology") {
-            (void) ed.annotateNetDelay(*it->second, result);
+            if (!ed.annotateNetDelay(*it->second, result) && result.success) {
+                // Delay annotation failure should be visible in top-level status/fail_reason.
+                result.status = result.delay_summary.status;
+                result.fail_reason = result.delay_summary.fail_reason;
+            }
         } else {
             result.delay_summary.ready = false;
+            result.delay_summary.status = "edcompute_invalid_tree";
+            result.delay_summary.fail_reason = "routing result is not timing-annotatable";
         }
     }
 
