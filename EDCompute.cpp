@@ -21,13 +21,28 @@ bool resolveHbtRC(const TreeNodeState& node,
     hbt_res = 0.0;
     hbt_cap = 0.0;
 
-    if (node.incoming_hbt_count <= 0) {
-        return true;
-    }
-
     if (node.incoming_hbt_count < 0) {
         reason = "negative incoming_hbt_count";
         return false;
+    }
+    if (node.incoming_hbt_count == 0) {
+        hbt_res = 0.0;
+        hbt_cap = 0.0;
+        return true;
+    }
+
+    if (params.override_tree_hbt_rc) {
+        if (params.default_hbt_res <= 0.0) {
+            reason = "override_tree_hbt_rc enabled but default_hbt_res is not positive";
+            return false;
+        }
+        if (params.default_hbt_cap < 0.0) {
+            reason = "override_tree_hbt_rc enabled but default_hbt_cap is negative";
+            return false;
+        }
+        hbt_res = params.default_hbt_res * static_cast<double>(node.incoming_hbt_count);
+        hbt_cap = params.default_hbt_cap * static_cast<double>(node.incoming_hbt_count);
+        return true;
     }
 
     // Prefer per-branch RC recorded by PDTreeRouter. If it is absent, fall back
@@ -43,11 +58,11 @@ bool resolveHbtRC(const TreeNodeState& node,
         return false;
     }
 
-    if (node.incoming_hbt_cap > 0.0) {
+    if (node.incoming_hbt_cap >= 0.0) {
         hbt_cap = node.incoming_hbt_cap;
-    } else if (node.hbt_cap > 0.0) {
+    } else if (node.hbt_cap >= 0.0) {
         hbt_cap = node.hbt_cap;
-    } else if (params.default_hbt_cap > 0.0) {
+    } else if (params.default_hbt_cap >= 0.0) {
         hbt_cap = params.default_hbt_cap * static_cast<double>(node.incoming_hbt_count);
     } else {
         reason = "negative HBT capacitance and no valid default_hbt_cap";

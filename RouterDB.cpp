@@ -803,6 +803,10 @@ double RouterDB::getViaResistanceOrDefault(const std::string& via_name) const
 
 double RouterDB::getHBTResistanceOrDefault() const
 {
+    if (hbt.has_parasitic && hbt.parasitic_res > 0.0) {
+        return hbt.parasitic_res;
+    }
+
     if (has_hb_layer_resistance_from_db_ && isValidPositive(hb_layer_resistance_from_db_)) {
         return hb_layer_resistance_from_db_;
     }
@@ -816,6 +820,14 @@ double RouterDB::getHBTResistanceOrDefault() const
 
     const auto fallback = RCDefaults::findViaResistance("hb_layer");
     return (fallback.has_value() && isValidPositive(*fallback)) ? *fallback : 0.0;
+}
+
+double RouterDB::getHBTCapacitanceOrDefault() const
+{
+    if (hbt.has_parasitic && hbt.parasitic_cap >= 0.0) {
+        return hbt.parasitic_cap;
+    }
+    return 0.0;
 }
 
 std::vector<std::string> RouterDB::getTopGuideCandidateLayers() const

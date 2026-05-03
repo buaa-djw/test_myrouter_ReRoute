@@ -207,6 +207,7 @@ public:
     EffectiveRC getClockWireRCFallback() const;
     double getViaResistanceOrDefault(const std::string& via_name) const;
     double getHBTResistanceOrDefault() const;
+    double getHBTCapacitanceOrDefault() const;
     std::vector<std::string> getTopGuideCandidateLayers() const;
     std::vector<std::string> getBottomGuideCandidateLayers() const;
     std::vector<const Net*> getRouteableNets() const;

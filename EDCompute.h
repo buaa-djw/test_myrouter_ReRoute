@@ -13,6 +13,9 @@ public:
         // Fallback HBT RC if DB lacks dedicated HBT parasitics.
         double default_hbt_res = 0.0;
         double default_hbt_cap = 0.0;
+        // When true, ignore per-node/tree-stored HBT RC and always use
+        // default_hbt_res/default_hbt_cap (scaled by incoming_hbt_count).
+        bool override_tree_hbt_rc = false;
 
         bool verbose = false;
     };

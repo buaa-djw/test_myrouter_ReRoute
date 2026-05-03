@@ -252,16 +252,14 @@ int main(int argc, char** argv)
     const double ed_hbt_cap = use_ed_override ? cfg.edcompute_rc.hbt_cap * cfg.edcompute_rc.hbt_rc_scale : scaled_hbt_cap;
     const double ed_source_res = use_ed_override ? cfg.edcompute_rc.source_res : cfg.rc.source_res;
     const double ed_sink_cap = use_ed_override ? cfg.edcompute_rc.default_sink_cap : cfg.rc.default_sink_cap;
-    EDCompute ed(
-        db,
-        EDCompute::Params{
-            ed_sink_cap,
-            ed_source_res,
-            ed_hbt_res,
-            ed_hbt_cap,
-            false
-        }
-    );
+    EDCompute::Params ed_params;
+    ed_params.default_sink_cap = ed_sink_cap;
+    ed_params.default_driver_res = ed_source_res;
+    ed_params.default_hbt_res = ed_hbt_res;
+    ed_params.default_hbt_cap = ed_hbt_cap;
+    ed_params.override_tree_hbt_rc = use_ed_override;
+    ed_params.verbose = false;
+    EDCompute ed(db, ed_params);
 
     std::unordered_map<std::string, const Net*> net_by_name;
     for (const Net& net : db.nets) {
