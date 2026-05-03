@@ -9,7 +9,8 @@ void writeExperimentSummary(const std::string& path,
                             const std::vector<NetRouteResult>& results,
                             const std::string& st,
                             const std::string& et,
-                            double rt)
+                            double rt,
+                            const CriticalNetOptimizerStatsProxy* reroute_stats)
 {
     std::ofstream o(path);
     int routed_success = 0;
@@ -108,4 +109,17 @@ void writeExperimentSummary(const std::string& path,
     o << "max_3d_sink_delay=" << max_3d << "\n";
     o << "avg_2d_sink_delay=" << (n_2d ? sum_2d / n_2d : 0.0) << "\n";
     o << "max_2d_sink_delay=" << max_2d << "\n";
+    if (reroute_stats) {
+        o << "\nReRoute Metrics\n";
+        o << "visited_nets=" << reroute_stats->visited_nets << "\n";
+        o << "improved_nets=" << reroute_stats->improved_nets << "\n";
+        o << "tried_candidates=" << reroute_stats->tried_candidates << "\n";
+        o << "accepted_candidates=" << reroute_stats->accepted_candidates << "\n";
+        o << "rejected_by_topology=" << reroute_stats->rejected_by_topology << "\n";
+        o << "rejected_by_delay=" << reroute_stats->rejected_by_delay << "\n";
+        o << "rejected_by_wirelength=" << reroute_stats->rejected_by_wirelength << "\n";
+        o << "rejected_by_hbt_conflict=" << reroute_stats->rejected_by_hbt_conflict << "\n";
+        o << "hbt_conflict_before=" << reroute_stats->hbt_conflict_before << "\n";
+        o << "hbt_conflict_after=" << reroute_stats->hbt_conflict_after << "\n";
+    }
 }

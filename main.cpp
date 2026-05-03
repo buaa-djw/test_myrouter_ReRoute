@@ -2,6 +2,8 @@
 #include "ExperimentConfig.h"
 #include "ExperimentSummaryWriter.h"
 #include "Grid.h"
+#include "HBTResourceManager.h"
+#include "NetReRoute.h"
 #include "NetInfoWriter.h"
 #include "Parser.h"
 #include "PDTreeRouter.h"
@@ -291,6 +293,45 @@ int main(int argc, char** argv)
 
     runEdcomputeSanityChecks(results);
 
+    CriticalNetOptimizer::OptimizationStats reroute_stats;
+    HBTResourceManager hbt_manager;
+    hbt_manager.initializeFromGrid(grid);
+    hbt_manager.rebuildFromRouteResults(results, &std::cout);
+    hbt_manager.validateNoConflict(&std::cout);
+    reroute_stats.hbt_conflict_before = hbt_manager.collectStats().conflict_count;
+
+    if (cfg.reroute.enable) {
+        CriticalNetOptimizer::Params rr_params;
+        rr_params.top_k_nets = cfg.reroute.top_k_nets;
+        rr_params.max_iterations_per_net = cfg.reroute.max_iterations_per_net;
+        rr_params.max_wirelength_growth_ratio = cfg.reroute.max_wirelength_growth_ratio;
+        rr_params.max_extra_hbts = cfg.reroute.max_extra_hbts;
+        rr_params.enable_reattach = cfg.reroute.enable_reattach;
+        rr_params.enable_ripup = cfg.reroute.enable_ripup;
+        rr_params.enable_hbt_swap = cfg.reroute.enable_hbt_swap;
+        rr_params.beam_width = cfg.reroute.beam_width;
+        rr_params.objective_weight_max_delay = cfg.reroute.objective_weight_max_delay;
+        rr_params.objective_weight_avg_delay = cfg.reroute.objective_weight_avg_delay;
+        rr_params.objective_weight_wirelength_growth = cfg.reroute.objective_weight_wirelength_growth;
+        rr_params.objective_weight_hbt_count = cfg.reroute.objective_weight_hbt_count;
+        rr_params.objective_weight_hbt_delay = cfg.reroute.objective_weight_hbt_delay;
+        rr_params.verbose = cfg.reroute.verbose;
+        CriticalNetOptimizer optimizer(db, grid, router, hbt_manager, rr_params);
+        reroute_stats = optimizer.optimize(results);
+        hbt_manager.rebuildFromRouteResults(results, &std::cout);
+        hbt_manager.validateNoConflict(&std::cout);
+        reroute_stats.hbt_conflict_after = hbt_manager.collectStats().conflict_count;
+        for (NetRouteResult& result : results) {
+            auto it = net_by_name.find(result.net_name);
+            if (it != net_by_name.end() && result.success && result.status != "invalid_topology") {
+                ed.annotateNetDelay(*it->second, result);
+            }
+        }
+        runEdcomputeSanityChecks(results);
+        std::cout << "[main][reroute] visited=" << reroute_stats.visited_nets << " improved=" << reroute_stats.improved_nets << " tried=" << reroute_stats.tried_candidates << " accepted=" << reroute_stats.accepted_candidates << "
+";
+    }
+
     // ------------------------------------------------------------
     // 6. Create output directories
     // ------------------------------------------------------------
@@ -344,6 +385,17 @@ int main(int argc, char** argv)
     const double runtime_sec = std::chrono::duration<double>(t1 - t0).count();
     const std::string end_ts = nowString();
 
+    CriticalNetOptimizerStatsProxy rr_proxy;
+    rr_proxy.visited_nets = reroute_stats.visited_nets;
+    rr_proxy.improved_nets = reroute_stats.improved_nets;
+    rr_proxy.tried_candidates = reroute_stats.tried_candidates;
+    rr_proxy.accepted_candidates = reroute_stats.accepted_candidates;
+    rr_proxy.rejected_by_topology = reroute_stats.rejected_by_topology;
+    rr_proxy.rejected_by_delay = reroute_stats.rejected_by_delay;
+    rr_proxy.rejected_by_wirelength = reroute_stats.rejected_by_wirelength;
+    rr_proxy.rejected_by_hbt_conflict = reroute_stats.rejected_by_hbt_conflict;
+    rr_proxy.hbt_conflict_before = reroute_stats.hbt_conflict_before;
+    rr_proxy.hbt_conflict_after = reroute_stats.hbt_conflict_after;
     writeExperimentSummary(
         (output_dir / cfg.output.summary_report).string(),
         cfg,
@@ -351,7 +403,8 @@ int main(int argc, char** argv)
         results,
         start_ts,
         end_ts,
-        runtime_sec
+        runtime_sec,
+        &rr_proxy
     );
 
     std::cout << "[main] Wrote summary: "

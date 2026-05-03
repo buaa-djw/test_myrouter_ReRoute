@@ -49,6 +49,24 @@ struct ExperimentConfig {
         double hbt_rc_scale = 1;
     } edcompute_rc;
     PDTreeRouter::TraditionalPDTreeParams traditional_pdtree;
+
+    struct ReRoute {
+        bool enable = false;
+        int top_k_nets = 20;
+        int max_iterations_per_net = 20;
+        double max_wirelength_growth_ratio = 0.05;
+        int max_extra_hbts = 0;
+        bool enable_reattach = true;
+        bool enable_ripup = false;
+        bool enable_hbt_swap = false;
+        int beam_width = 4;
+        double objective_weight_max_delay = 1.0;
+        double objective_weight_avg_delay = 0.2;
+        double objective_weight_wirelength_growth = 0.05;
+        double objective_weight_hbt_count = 0.1;
+        double objective_weight_hbt_delay = 0.2;
+        bool verbose = true;
+    } reroute;
     struct Debug {
         bool dump_candidate_cost = false;
         bool dump_per_net_detail = true;

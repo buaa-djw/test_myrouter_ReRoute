@@ -1242,3 +1242,12 @@ void HybridGrid::validate(const RouterDB& db) const
    - RouterDB 扩展 per-die routing_layers / obstacles 后，在 RoutingGridBase
      的筛选接口内按 die 独立统计代表性 pitch 与 blockages。
 */
+
+
+bool HybridGrid::getHBTPoint(int hbt_id, Point2D& out) const
+{
+    if (hbt_id < 0 || hbt_id >= static_cast<int>(hbt.getSlots().size())) return false;
+    const auto& slot = hbt.getSlots().at(hbt_id);
+    out = Point2D{slot.x, slot.y};
+    return true;
+}

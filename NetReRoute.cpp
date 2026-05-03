@@ -22,8 +22,9 @@ DieId normalizeDieLocal(DieId d)
 CriticalNetOptimizer::CriticalNetOptimizer(const RouterDB& db,
                                            const HybridGrid& grid,
                                            const PDTreeRouter& router,
+                                           HBTResourceManager& hbt_manager,
                                            const Params& params)
-    : db_(db), grid_(grid), router_(router), params_(params)
+    : db_(db), grid_(grid), router_(router), hbt_manager_(hbt_manager), params_(params)
 {
 }
 
@@ -51,12 +52,15 @@ CriticalNetOptimizer::OptimizationStats CriticalNetOptimizer::optimize(
         stats.total_avg_delay_before += result.delay_summary.avg_sink_delay;
         stats.total_max_delay_before += result.delay_summary.max_sink_delay;
 
-        const bool improved = optimizeOneNet(net, result);
+        const double before_obj = evaluatePostOptimizationObjective(result, net);
+        stats.total_objective_before += before_obj;
+        const bool improved = optimizeOneNet(net, result, stats);
         if (improved) {
             ++stats.improved_nets;
         }
 
         stats.total_avg_delay_after += result.delay_summary.avg_sink_delay;
+        stats.total_objective_after += evaluatePostOptimizationObjective(result, net);
         stats.total_max_delay_after += result.delay_summary.max_sink_delay;
     }
 
@@ -137,7 +141,7 @@ std::vector<CriticalNetOptimizer::CriticalNetRecord> CriticalNetOptimizer::colle
     return records;
 }
 
-bool CriticalNetOptimizer::optimizeOneNet(const Net& net, NetRouteResult& result) const
+bool CriticalNetOptimizer::optimizeOneNet(const Net& net, NetRouteResult& result, OptimizationStats& stats) const
 {
     if (!result.success || !result.delay_summary.ready) {
         return false;
@@ -171,6 +175,9 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net& net, NetRouteResult& result
     bool found_better = false;
 
     int tried = 0;
+    if (!params_.enable_reattach) return false;
+    if (params_.enable_ripup && params_.verbose) std::cout << "[CriticalNetOptimizer] TODO enable_ripup not implemented\n";
+    if (params_.enable_hbt_swap && params_.verbose) std::cout << "[CriticalNetOptimizer] TODO enable_hbt_swap not implemented\n";
     for (int cand_parent : parent_candidates) {
         if (tried >= params_.max_iterations_per_net) {
             break;
@@ -197,7 +204,7 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net& net, NetRouteResult& result
             continue;
         }
 
-        ++tried;
+        ++tried; ++stats.tried_candidates;
         NetRouteResult tmp = result;
         if (!replaceSinkIncomingBranch(net,
                                        tmp,
@@ -215,6 +222,7 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net& net, NetRouteResult& result
         const bool wl_ok = tmp_timing.total_wirelength <= base_wl * (1.0 + params_.max_wirelength_growth_ratio) + 1e-9;
         const bool hbt_ok = tmp_timing.hbt_count <= base_hbt + params_.max_extra_hbts;
         if (!wl_ok || !hbt_ok) {
+            ++stats.rejected_by_wirelength;
             continue;
         }
 
@@ -222,15 +230,13 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net& net, NetRouteResult& result
             (tmp.delay_summary.max_sink_delay + 1e-12 < result.delay_summary.max_sink_delay)
             || (std::abs(tmp.delay_summary.max_sink_delay - result.delay_summary.max_sink_delay) <= 1e-12
                 && tmp.delay_summary.avg_sink_delay + 1e-12 < result.delay_summary.avg_sink_delay);
-        if (!better_delay) {
-            continue;
-        }
+        if (!better_delay) { ++stats.rejected_by_delay; continue; }
 
         const double obj = evaluatePostOptimizationObjective(tmp, net);
         if (obj + 1e-12 < best_obj) {
             best = std::move(tmp);
             best_obj = obj;
-            found_better = true;
+            found_better = true; ++stats.accepted_candidates;
         }
     }
 
@@ -359,6 +365,10 @@ bool CriticalNetOptimizer::replaceSinkIncomingBranch(const Net& net,
     for (const RoutedSegment& seg : new_segments) {
         if (seg.uses_hbt) {
             ++sink_node.incoming_hbt_count;
+            sink_node.assigned_hbt_id = seg.hbt_id;
+            if (!db_.hbt.has_parasitic) { return false; }
+            sink_node.incoming_hbt_res += db_.hbt.parasitic_res;
+            sink_node.incoming_hbt_cap += db_.hbt.parasitic_cap;
             continue;
         }
         const int length_dbu = std::abs(seg.p1.x - seg.p2.x) + std::abs(seg.p1.y - seg.p2.y);
@@ -425,7 +435,13 @@ double CriticalNetOptimizer::evaluatePostOptimizationObjective(const NetRouteRes
     if (!result.success || !result.delay_summary.ready) {
         return std::numeric_limits<double>::infinity();
     }
-    return router_.evaluateObjectivePublic(net, result);
+    const auto timing = router_.evaluateTimingSummaryPublic(net, result);
+    const double normalized_wirelength = timing.total_wirelength > 0.0 ? timing.total_wirelength : 0.0;
+    return params_.objective_weight_max_delay * result.delay_summary.max_sink_delay
+         + params_.objective_weight_avg_delay * result.delay_summary.avg_sink_delay
+         + params_.objective_weight_wirelength_growth * normalized_wirelength
+         + params_.objective_weight_hbt_count * timing.hbt_count
+         + params_.objective_weight_hbt_delay * result.delay_summary.ed_hbt_delay_contrib;
 }
 
 std::vector<CriticalNetOptimizer::NetEditCandidate> CriticalNetOptimizer::generateHBTSwapCandidates(

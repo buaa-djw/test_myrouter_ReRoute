@@ -398,6 +398,8 @@ public:
     void build(const RouterDB& db, int hbt_origin_x, int hbt_origin_y);
     void bindHBTToTopBottom();
     void validate(const RouterDB& db) const;
+    int hbtSlotCount() const { return static_cast<int>(hbt.getSlots().size()); }
+    bool getHBTPoint(int hbt_id, Point2D& out) const;
 
     TopRoutingGrid top;
     BottomRoutingGrid bottom;
