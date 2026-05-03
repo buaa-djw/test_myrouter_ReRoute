@@ -1,0 +1,51 @@
+{
+  "experiment_name": "gcd_proposed_with_2d_plots",
+  "benchmark": "gcd",
+  "cost_mode": "proposed",
+  "input": {
+    "common_lef": "/home/djw/Desktop/TaiWei/ORFS-Research/tools/OpenROAD/src/test_myrouter_PDtree/test/asap7_nangate45_2A6M10M.lef",
+    "hbt_lef": "/home/djw/Desktop/TaiWei/ORFS-Research/tools/OpenROAD/src/test_myrouter_PDtree/test/asap7_nangate45_10M10M.hbPitch_0p2.lef",
+    "upper_lef": "/home/djw/Desktop/TaiWei/ORFS-Research/tools/OpenROAD/src/test_myrouter_PDtree/test/asap7sc7p5t_28_R_1x_220121a.upper.processed.lef",
+    "bottom_lef": "/home/djw/Desktop/TaiWei/ORFS-Research/tools/OpenROAD/src/test_myrouter_PDtree/test/NangateOpenCellLibrary.macro.mod.bottom.processed.lef",
+    "def_file": "/home/djw/Desktop/TaiWei/ORFS-Research/tools/OpenROAD/src/test_myrouter_PDtree/test/gcd1.def",
+    "extra_lefs": []
+  },
+  "output": {
+    "output_dir": "results/gcd_proposed_with_2d_plots",
+    "dump_2d_plot_data": true,
+    "dump_3d_plot_data": true
+  },
+  "pd_tree": {
+    "max_nets": -1,
+    "verbose": true
+  },
+  "rc": {
+    "source_res": 50,
+    "default_sink_cap": 0.001,
+    "hbt_res": 5.0,
+    "hbt_cap": 0.001,
+    "hbt_rc_scale": 1.0
+  },
+  "report_cost": {
+    "coef_wire_delay": 1.0,
+    "coef_parent_load_delay": 1.0,
+    "coef_hbt_rc_delay": 1.0,
+    "coef_hbt_net_penalty": 1.0,
+    "coef_hbt_net_quad_penalty": 1.0,
+    "coef_hbt_path_penalty": 0.1,
+    "coef_stretch_penalty": 0.2,
+    "hbt_unit_delay_scale": 1.0,
+    "hbt_net_penalty_scale": 1.0,
+    "hbt_net_quad_penalty_scale": 1.0,
+    "hbt_path_penalty_scale": 1.0,
+    "stretch_limit": 1.5,
+    "max_hbt_per_path": 1,
+    "max_hbt_per_net": 2,
+    "default_wire_res_per_um": 0.1,
+    "default_wire_cap_per_um": 0.0002
+  },
+  "debug": {
+    "dump_candidate_cost": true,
+    "dump_plot_data": true
+  }
+}
