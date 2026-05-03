@@ -11,6 +11,14 @@ bool isValidTreeIndex(const NetRouteResult& result, int idx)
     return idx >= 0 && idx < static_cast<int>(result.tree_nodes.size());
 }
 
+void markDelayFailure(NetRouteResult& result, const std::string& status, const std::string& reason)
+{
+    result.delay_summary = NetDelaySummary{};
+    result.delay_summary.ready = false;
+    result.delay_summary.status = status;
+    result.delay_summary.fail_reason = reason;
+}
+
 }  // namespace
 
 EDCompute::EDCompute(const RouterDB& db)
@@ -25,18 +33,16 @@ EDCompute::EDCompute(const RouterDB& db, const Params& params)
 
 bool EDCompute::annotateNetDelay(const Net& net, NetRouteResult& result) const
 {
-    // Delay model summary:
-    // - Wire edges use distributed RC approximation.
-    // - HBT edges use lumped resistance + optional lumped capacitance.
-    // This keeps global-routing estimation stable before detailed extraction.
     result.delay_summary = NetDelaySummary{};
+    result.delay_summary.status = "running";
 
-    // Invalid topology must not produce timing-ready delay.
     if (!result.success || result.status == "invalid_topology") {
+        markDelayFailure(result, "edcompute_invalid_tree", "route status is not success or topology is invalid");
         return false;
     }
 
     if (net.pins.empty() || result.tree_nodes.empty() || !isValidTreeIndex(result, result.root_tree_index)) {
+        markDelayFailure(result, "edcompute_invalid_tree", "empty net/tree or invalid root");
         return false;
     }
 
@@ -54,17 +60,8 @@ bool EDCompute::annotateNetDelay(const Net& net, NetRouteResult& result) const
                 std::cerr << "[EDCompute] invalid parent for net=" << net.name
                           << " node=" << i << " parent=" << p << std::endl;
             }
+            markDelayFailure(result, "edcompute_invalid_tree", "invalid parent index");
             return false;
-        }
-        if (result.tree_nodes[i].node_type == TreeNodeState::NodeType::kHBT) {
-            if (result.tree_nodes[i].assigned_hbt_id < 0 ||
-                (result.tree_nodes[i].incoming_hbt_count > 0 &&
-                 (result.tree_nodes[i].incoming_hbt_res <= 0.0 || result.tree_nodes[i].incoming_hbt_cap < 0.0))) {
-                if (params_.verbose) {
-                    std::cerr << "[EDCompute] invalid HBT node for net=" << net.name << " node=" << i << std::endl;
-                }
-                return false;
-            }
         }
         children[p].push_back(i);
     }
@@ -81,6 +78,7 @@ bool EDCompute::annotateNetDelay(const Net& net, NetRouteResult& result) const
     // Single-pin net: valid and zero-delay by definition.
     if (net.pins.size() <= 1) {
         result.delay_summary.ready = true;
+        result.delay_summary.status = "ok";
         result.delay_summary.avg_sink_delay = 0.0;
         result.delay_summary.max_sink_delay = 0.0;
         return true;
@@ -88,17 +86,32 @@ bool EDCompute::annotateNetDelay(const Net& net, NetRouteResult& result) const
 
     std::vector<double> local_cap(n, 0.0);
     const int root_pin = result.tree_nodes[root_idx].pin_index;
+    int mapped_sink_count = 0;
+    int expected_sink_count = 0;
     for (int pin_idx = 0; pin_idx < static_cast<int>(net.pins.size()); ++pin_idx) {
         if (pin_idx == root_pin) {
             continue;
         }
+        ++expected_sink_count;
         const int t = pin_to_tree[pin_idx];
         if (!isValidTreeIndex(result, t)) {
             continue;
         }
+        ++mapped_sink_count;
         const Pin& pin = net.pins[pin_idx];
         const double cap = pin.has_input_cap ? std::max(0.0, pin.input_cap) : params_.default_sink_cap;
         local_cap[t] += cap;
+        result.delay_summary.total_load_cap += cap;
+    }
+
+    // All sink pins must map to tree nodes, otherwise avg/max delay is incomplete.
+    if (expected_sink_count <= 0) {
+        markDelayFailure(result, "edcompute_empty_sink", "net has no sink pin after excluding root");
+        return false;
+    }
+    if (mapped_sink_count != expected_sink_count) {
+        markDelayFailure(result, "edcompute_unmapped_sink", "not all sinks are mapped into routing tree");
+        return false;
     }
 
     std::vector<double> subtree_cap(n, 0.0);
@@ -129,14 +142,25 @@ bool EDCompute::annotateNetDelay(const Net& net, NetRouteResult& result) const
         double cap = local_cap[u];
         for (int v : children[u]) {
             const TreeNodeState& child = result.tree_nodes[v];
-            // Distributed wire cap is accumulated into subtree cap.
-            // HBT cap is lumped at HBT-device boundary and injected separately
-            // in forward propagation to avoid mixing into 0.5*wire_cap.
-            const double edge_wire_cap = child.incoming_wire_cap;
-            cap += subtree_cap[v] + edge_wire_cap;
+            const double edge_wire_cap = std::max(0.0, child.incoming_wire_cap);
+            const double hbt_cap = (child.incoming_hbt_count > 0)
+                                       ? ((child.incoming_hbt_cap >= 0.0)
+                                              ? child.incoming_hbt_cap
+                                              : params_.default_hbt_cap * static_cast<double>(child.incoming_hbt_count))
+                                       : 0.0;
+            if (child.incoming_hbt_count > 0 && hbt_cap < 0.0) {
+                markDelayFailure(result, "edcompute_invalid_tree", "invalid HBT cap and no valid fallback");
+                return false;
+            }
+            // subtree_cap[u] = local sink cap at u + all child subtree + wire cap + HBT lumped cap.
+            // Convention: HBT capacitance is modeled as lumped cap on child-side of cross-die edge.
+            cap += subtree_cap[v] + edge_wire_cap + std::max(0.0, hbt_cap);
+            result.delay_summary.total_wire_cap += edge_wire_cap;
+            result.delay_summary.total_hbt_cap += std::max(0.0, hbt_cap);
         }
         subtree_cap[u] = cap;
     }
+    result.delay_summary.total_tree_cap = subtree_cap[root_idx];
 
     // Root initialization uses driver resistance proxy.
     delay[root_idx] = params_.default_driver_res * subtree_cap[root_idx];
@@ -150,20 +174,26 @@ bool EDCompute::annotateNetDelay(const Net& net, NetRouteResult& result) const
     for (int u : order) {
         for (int v : children[u]) {
             const TreeNodeState& child = result.tree_nodes[v];
+            const double wire_res = std::max(0.0, child.incoming_wire_res);
+            const double wire_cap = std::max(0.0, child.incoming_wire_cap);
             const double hbt_res = (child.incoming_hbt_count > 0)
                                        ? ((child.incoming_hbt_res > 0.0)
                                               ? child.incoming_hbt_res
                                               : params_.default_hbt_res * static_cast<double>(child.incoming_hbt_count))
                                        : 0.0;
             const double hbt_cap = (child.incoming_hbt_count > 0)
-                                       ? ((child.incoming_hbt_cap > 0.0)
+                                       ? ((child.incoming_hbt_cap >= 0.0)
                                               ? child.incoming_hbt_cap
                                               : params_.default_hbt_cap * static_cast<double>(child.incoming_hbt_count))
                                        : 0.0;
-            const double wire_res = child.incoming_wire_res;
-            const double wire_cap = child.incoming_wire_cap;
+            if (child.incoming_hbt_count > 0 && hbt_res <= 0.0) {
+                markDelayFailure(result, "edcompute_invalid_tree", "invalid HBT res and no valid fallback");
+                return false;
+            }
             const double wire_term = wire_res * (subtree_cap[v] + 0.5 * wire_cap);
-            const double hbt_term = hbt_res * (subtree_cap[v] + hbt_cap);
+            // HBT delay term uses downstream load after HBT device.
+            // hbt_cap is included in subtree_cap[v], so do not add it again here.
+            const double hbt_term = hbt_res * subtree_cap[v];
             delay[v] = delay[u] + wire_term + hbt_term;
         }
     }
@@ -194,6 +224,8 @@ bool EDCompute::annotateNetDelay(const Net& net, NetRouteResult& result) const
         info.hbt_count_from_root = result.tree_nodes[t].hbt_count_from_root;
 
         sink_infos.push_back(info);
+        result.delay_summary.sink_path_lengths.push_back(static_cast<double>(info.path_length));
+        result.delay_summary.sink_hbt_counts.push_back(info.hbt_count_from_root);
         sum_delay += info.delay;
         if (info.delay > max_delay) {
             max_delay = info.delay;
@@ -207,10 +239,12 @@ bool EDCompute::annotateNetDelay(const Net& net, NetRouteResult& result) const
         if (params_.verbose) {
             std::cerr << "[EDCompute] no sink nodes mapped for net=" << net.name << std::endl;
         }
+        markDelayFailure(result, "edcompute_empty_sink", "no mapped sink in tree");
         return false;
     }
 
     result.delay_summary.ready = true;
+    result.delay_summary.status = "ok";
     result.delay_summary.sink_delays = std::move(sink_infos);
     result.delay_summary.avg_sink_delay = sum_delay / static_cast<double>(result.delay_summary.sink_delays.size());
     result.delay_summary.max_sink_delay = std::max(0.0, max_delay);

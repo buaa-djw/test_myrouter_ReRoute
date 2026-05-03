@@ -84,11 +84,19 @@ struct SinkDelayInfo
 struct NetDelaySummary
 {
     bool ready = false;
+    std::string status = "uninitialized";
+    std::string fail_reason;
     double avg_sink_delay = 0.0;
     double max_sink_delay = 0.0;
     int max_delay_pin_index = -1;
     std::string max_delay_pin_name;
     std::vector<SinkDelayInfo> sink_delays;
+    std::vector<double> sink_path_lengths;
+    std::vector<int> sink_hbt_counts;
+    double total_wire_cap = 0.0;
+    double total_load_cap = 0.0;
+    double total_hbt_cap = 0.0;
+    double total_tree_cap = 0.0;
 };
 
 struct RouteValidationResult
