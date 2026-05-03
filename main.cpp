@@ -44,16 +44,6 @@ std::string nowString()
     return os.str();
 }
 
-const Net* findNetByName(const RouterDB& db, const std::string& net_name)
-{
-    for (const auto& net : db.nets) {
-        if (net.name == net_name) {
-            return &net;
-        }
-    }
-    return nullptr;
-}
-
 std::string shellQuote(const std::string& s)
 {
     std::string out = "'";
