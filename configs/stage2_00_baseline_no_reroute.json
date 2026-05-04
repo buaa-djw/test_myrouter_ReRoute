@@ -11,7 +11,7 @@
     "extra_lefs": []
   },
   "output": {
-    "output_dir": "results/stage2_00_baseline_no_reroute"
+    "output_dir": "results_reroute/stage2_00_baseline_no_reroute"
   },
   "pd_tree": {
     "max_nets": -1,

@@ -11,7 +11,7 @@
     "extra_lefs": []
   },
   "output": {
-    "output_dir": "results/stage2_03_reattach_plus_ripup"
+    "output_dir": "results_reroute/stage2_03_reattach_plus_ripup"
   },
   "pd_tree": {
     "max_nets": -1,
