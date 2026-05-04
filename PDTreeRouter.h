@@ -132,6 +132,10 @@ struct RerouteInfo
     double wirelength_after = 0.0;
     int hbt_count_before = 0;
     int hbt_count_after = 0;
+    int old_hbt_id = -1;
+    int new_hbt_id = -1;
+    int changed_hbt_id_count = 0;
+    int changed_segment_count = 0;
     std::string reject_reason;
 };
 
