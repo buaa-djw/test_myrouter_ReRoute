@@ -68,6 +68,30 @@ void writeNetInfo(const std::string& path, const RouterDB& db, const std::vector
         o << "  ed_total_delay_contrib: " << r.delay_summary.ed_total_delay_contrib << "\n";
         o << "  max_delay_pin_name: " << r.delay_summary.max_delay_pin_name << "\n";
         o << "  validation: " << (r.validation.valid ? "OK" : "INVALID") << "\n";
+        o << "  reroute_touched: " << r.reroute_info.touched << "
+";
+        o << "  reroute_improved: " << r.reroute_info.improved << "
+";
+        o << "  reroute_edit_type: " << r.reroute_info.edit_type << "
+";
+        o << "  reroute_delay_before: " << r.reroute_info.delay_before << "
+";
+        o << "  reroute_delay_after: " << r.reroute_info.delay_after << "
+";
+        o << "  reroute_objective_before: " << r.reroute_info.objective_before << "
+";
+        o << "  reroute_objective_after: " << r.reroute_info.objective_after << "
+";
+        o << "  reroute_wirelength_before: " << r.reroute_info.wirelength_before << "
+";
+        o << "  reroute_wirelength_after: " << r.reroute_info.wirelength_after << "
+";
+        o << "  reroute_hbt_count_before: " << r.reroute_info.hbt_count_before << "
+";
+        o << "  reroute_hbt_count_after: " << r.reroute_info.hbt_count_after << "
+";
+        o << "  reroute_reject_reason: " << r.reroute_info.reject_reason << "
+";
         o << "  tree_nodes: " << r.tree_nodes.size() << "\n";
         o << "  segments: " << r.segments.size() << "\n\n";
     }
