@@ -158,14 +158,22 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
             continue;
         }
         bool force_ok = (c.type == EditType::kSwapHBT && params_.debug_force_accept_hbt_swap);
-        if (force_ok) { std::string vr; force_ok = verifyHBTSwapApplied(result, c.old_hbt_id, c.new_hbt_id, vr); if (!force_ok && stats) stats->rejected_by_hbt_swap_not_applied++; }
+        if (force_ok) {
+            std::string vr;
+            force_ok = verifyHBTSwapApplied(result, c.old_hbt_id, c.new_hbt_id, vr);
+            if (!force_ok) {
+                stats.rejected_by_hbt_swap_not_applied++;
+            }
+        }
         if (obj + 1e-12 < best_obj || force_ok)
         {
             found = true;
             best = result;
             best_obj = obj;
             bestc = c;
-            if (force_ok && stats) stats->hbt_swap_force_accept_used = 1;
+            if (force_ok) {
+                stats.hbt_swap_force_accept_used = 1;
+            }
         }
         rollbackToSnapshot(result, snap, hbt_manager_, hs);
     }
@@ -436,7 +444,11 @@ std::vector<CriticalNetOptimizer::NetEditCandidate> CriticalNetOptimizer::genera
     if (old_hbts.empty()) { if (stats) stats->rejected_by_no_hbt_on_path++; return out; }
     auto pp = result.tree_nodes[result.tree_nodes[sink_tree_node].parent_index].point; auto sp = router_.pinToPointPublic(net.pins[sink_pin_index]);
     for (int old_id : old_hbts) for (int new_id : collectCandidateHBTsForReroute(net, result, pp, sp, old_id, params_.beam_width)) {
-        if (new_id == old_id) continue; std::vector<RoutedSegment> segs; std::string fr;
+        if (new_id == old_id) {
+            continue;
+        }
+        std::vector<RoutedSegment> segs;
+        std::string fr;
         if (!buildCrossDieBranchViaHBT(pp, sp, new_id, segs, fr)) { if (stats) stats->rejected_by_build_hbt_branch_failed++; continue; }
         NetEditCandidate c; c.type=EditType::kSwapHBT; c.sink_pin_index=sink_pin_index; c.sink_tree_node=sink_tree_node; c.old_parent_tree_node=result.tree_nodes[sink_tree_node].parent_index; c.new_parent_tree_node=c.old_parent_tree_node; c.old_hbt_id=old_id; c.new_hbt_id=new_id; c.old_hbt_ids={old_id}; c.new_hbt_ids={new_id}; c.new_segments=segs; c.changed_hbt_id_count=1; c.changed_segment_count=(int)segs.size(); out.push_back(c); if(stats) stats->tried_hbt_swap_candidates++; if((int)out.size()>=params_.max_iterations_per_net) return out;
     }
