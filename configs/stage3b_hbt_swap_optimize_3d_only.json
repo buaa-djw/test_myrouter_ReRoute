@@ -1,0 +1,28 @@
+{
+  "experiment_name": "stage3b_hbt_swap_optimize_3d_only",
+  "benchmark": "gcd",
+  "cost_mode": "proposed",
+  "input": {
+    "common_lef": "/home/djw/Desktop/TaiWei/ORFS-Research/tools/OpenROAD/src/test_myrouter_PDtree/test/asap7_nangate45_2A6M10M.lef",
+    "hbt_lef": "/home/djw/Desktop/TaiWei/ORFS-Research/tools/OpenROAD/src/test_myrouter_PDtree/test/asap7_nangate45_10M10M.hbPitch_0p2.lef",
+    "upper_lef": "/home/djw/Desktop/TaiWei/ORFS-Research/tools/OpenROAD/src/test_myrouter_PDtree/test/asap7sc7p5t_28_R_1x_220121a.upper.processed.lef",
+    "bottom_lef": "/home/djw/Desktop/TaiWei/ORFS-Research/tools/OpenROAD/src/test_myrouter_PDtree/test/NangateOpenCellLibrary.macro.mod.bottom.processed.lef",
+    "def_file": "/home/djw/Desktop/TaiWei/ORFS-Research/tools/OpenROAD/src/test_myrouter_PDtree/test/gcd1.def",
+    "extra_lefs": []
+  },
+  "reroute": {
+    "enable": true,
+    "enable_reattach": false,
+    "enable_ripup": false,
+    "enable_hbt_swap": true,
+    "target_net_type": "3d_only",
+    "top_k_nets": 20,
+    "max_iterations_per_net": 100,
+    "max_wirelength_growth_ratio": 1.0,
+    "max_extra_hbts": 1,
+    "objective_weight_hbt_delay": 1.0,
+    "objective_weight_wirelength_growth": 0.001,
+    "debug_force_accept_hbt_swap": false,
+    "verbose": true
+  }
+}

@@ -141,6 +141,7 @@ struct RerouteInfo
     int new_hbt_id = -1;
     int changed_hbt_id_count = 0;
     int changed_segment_count = 0;
+    bool force_accepted = false;
     std::string reject_reason;
 };
 

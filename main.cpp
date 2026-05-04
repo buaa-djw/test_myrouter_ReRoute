@@ -316,6 +316,8 @@ int main(int argc, char** argv)
         rr_params.objective_weight_hbt_count = cfg.reroute.objective_weight_hbt_count;
         rr_params.objective_weight_hbt_delay = cfg.reroute.objective_weight_hbt_delay;
         rr_params.verbose = cfg.reroute.verbose;
+        rr_params.target_net_type = cfg.reroute.target_net_type;
+        rr_params.debug_force_accept_hbt_swap = cfg.reroute.debug_force_accept_hbt_swap;
         CriticalNetOptimizer optimizer(db, grid, router, hbt_manager, rr_params);
         reroute_stats = optimizer.optimize(results);
         hbt_manager.rebuildFromRouteResults(results, &std::cout);
