@@ -112,6 +112,9 @@ void writeExperimentSummary(const std::string& path,
     if (reroute_stats) {
         o << "\nReRoute Metrics\n";
         o << "visited_nets=" << reroute_stats->visited_nets << "\n";
+        o << "reroute_target_net_type=" << cfg.reroute.target_net_type << "\n";
+        o << "reroute_visited_2d_nets=" << reroute_stats->visited_2d_nets << "\n";
+        o << "reroute_visited_3d_nets=" << reroute_stats->visited_3d_nets << "\n";
         o << "improved_nets=" << reroute_stats->improved_nets << "\n";
         o << "tried_candidates=" << reroute_stats->tried_candidates << "\n";
         o << "accepted_candidates=" << reroute_stats->accepted_candidates << "\n";
@@ -136,11 +139,15 @@ void writeExperimentSummary(const std::string& path,
         o << "accepted_hbt_remove_candidates=" << reroute_stats->accepted_hbt_remove_candidates << "\n";
         o << "rejected_by_no_free_hbt=" << reroute_stats->rejected_by_no_free_hbt << "\n";
         o << "rejected_by_no_hbt_on_path=" << reroute_stats->rejected_by_no_hbt_on_path << "\n";
+        o << "rejected_by_non_3d_net=" << reroute_stats->rejected_by_non_3d_net << "\n";
+        o << "rejected_by_build_hbt_branch_failed=" << reroute_stats->rejected_by_build_hbt_branch_failed << "\n";
+        o << "rejected_by_hbt_swap_not_applied=" << reroute_stats->rejected_by_hbt_swap_not_applied << "\n";
         o << "changed_hbt_id_count=" << reroute_stats->changed_hbt_id_count << "\n";
         o << "changed_hbt_count_total=" << reroute_stats->changed_hbt_count_total << "\n";
         o << "hbt_count_before=" << reroute_stats->hbt_count_before << "\n";
         o << "hbt_count_after=" << reroute_stats->hbt_count_after << "\n";
         o << "hbt_conflict_before=" << reroute_stats->hbt_conflict_before << "\n";
         o << "hbt_conflict_after=" << reroute_stats->hbt_conflict_after << "\n";
+        o << "hbt_swap_force_accept_used=" << reroute_stats->hbt_swap_force_accept_used << "\n";
     }
 }

@@ -26,6 +26,8 @@ public:
         double objective_weight_hbt_count = 0.1;
         double objective_weight_hbt_delay = 0.2;
         int beam_width = 4;
+        std::string target_net_type = "all";
+        bool debug_force_accept_hbt_swap = false;
         bool verbose = true;
     };
     struct OptimizationStats
@@ -34,7 +36,9 @@ public:
         int tried_reattach_candidates = 0, tried_ripup_candidates = 0, accepted_reattach_candidates = 0, accepted_ripup_candidates = 0, rejected_by_cycle = 0, rejected_by_cross_die_not_supported = 0, rejected_by_invalid_hbt = 0;
         int tried_hbt_swap_candidates = 0, accepted_hbt_swap_candidates = 0, tried_cross_die_ripup_candidates = 0, accepted_cross_die_ripup_candidates = 0;
         int tried_hbt_insert_candidates = 0, accepted_hbt_insert_candidates = 0, tried_hbt_remove_candidates = 0, accepted_hbt_remove_candidates = 0;
-        int rejected_by_no_free_hbt = 0, rejected_by_no_hbt_on_path = 0;
+        int rejected_by_no_free_hbt = 0, rejected_by_no_hbt_on_path = 0, rejected_by_non_3d_net = 0, rejected_by_build_hbt_branch_failed = 0, rejected_by_hbt_swap_not_applied = 0;
+        int visited_2d_nets = 0, visited_3d_nets = 0;
+        int hbt_swap_force_accept_used = 0;
         int changed_hbt_id_count = 0, changed_hbt_count_total = 0;
         int hbt_count_before = 0, hbt_count_after = 0;
         int hbt_conflict_before = 0, hbt_conflict_after = 0;
@@ -85,7 +89,9 @@ private:
     bool applyRipupCandidate(const Net &net, NetRouteResult &result, const NetEditCandidate &cand, HBTResourceManager &hbt_manager, std::string &fail_reason) const;
     bool buildCrossDieBranchViaHBT(const RoutedPoint& parent_point, const RoutedPoint& sink_point, int hbt_id, std::vector<RoutedSegment>& out_segments, std::string& fail_reason) const;
     std::vector<int> collectHBTsOnPath(const NetRouteResult& result, int sink_tree_node) const;
+    std::vector<int> collectAllUsedHBTsInNet(const NetRouteResult& result) const;
     std::vector<int> collectCandidateHBTsForReroute(const Net& net, const NetRouteResult& result, const RoutedPoint& parent_point, const RoutedPoint& sink_point, int old_hbt_id, int max_count) const;
+    bool verifyHBTSwapApplied(const NetRouteResult& result, int old_hbt_id, int new_hbt_id, std::string& reason) const;
     std::vector<NetEditCandidate> generateHBTSwapCandidates(const Net &net, const NetRouteResult &result, int sink_pin_index, int sink_tree_node, OptimizationStats *stats) const;
     std::vector<NetEditCandidate> generateRipupOneSinkCandidates(const Net &net, const NetRouteResult &result, int sink_pin_index, int sink_tree_node, OptimizationStats *stats) const;
     double evaluatePostOptimizationObjective(const NetRouteResult &result, const Net &net) const;

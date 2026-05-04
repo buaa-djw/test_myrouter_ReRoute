@@ -94,6 +94,9 @@ bool ExperimentConfig::loadFromFile(const std::string& p, ExperimentConfig& c, s
         c.reroute.objective_weight_hbt_count = gd(rr, "objective_weight_hbt_count", c.reroute.objective_weight_hbt_count);
         c.reroute.objective_weight_hbt_delay = gd(rr, "objective_weight_hbt_delay", c.reroute.objective_weight_hbt_delay);
         c.reroute.verbose = gb(rr, "verbose", c.reroute.verbose);
+        c.reroute.target_net_type = gs(rr, "target_net_type", c.reroute.target_net_type);
+        c.reroute.debug_force_accept_hbt_swap = gb(rr, "debug_force_accept_hbt_swap", c.reroute.debug_force_accept_hbt_swap);
+        c.reroute.debug_force_accept_hbt_swap = gb(rr, "accept_hbt_swap_if_topology_valid", c.reroute.debug_force_accept_hbt_swap);
     }
     if (j.contains("debug")) {
         auto& d = j["debug"];

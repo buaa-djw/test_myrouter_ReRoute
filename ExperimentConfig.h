@@ -25,6 +25,8 @@ struct ExperimentConfig {
         int max_local_hbt_candidates = 24;
         int max_hbt_nearest_k = 16;
         bool verbose = true;
+        std::string target_net_type = "all";
+        bool debug_force_accept_hbt_swap = false;
     } pd_tree;
     PDTreeRouter::ReportCostParams report_cost;
     struct RC {
@@ -66,6 +68,8 @@ struct ExperimentConfig {
         double objective_weight_hbt_count = 0.1;
         double objective_weight_hbt_delay = 0.2;
         bool verbose = true;
+        std::string target_net_type = "all";
+        bool debug_force_accept_hbt_swap = false;
     } reroute;
     struct Debug {
         bool dump_candidate_cost = false;

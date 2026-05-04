@@ -39,6 +39,7 @@ public:
     bool validateNoConflict(std::ostream* os = nullptr) const;
     bool rebuildFromRouteResults(const std::vector<NetRouteResult>& results, std::ostream* os = nullptr);
     std::vector<int> collectFreeHBTsNear(const HybridGrid& grid, const Point2D& p, int max_count) const;
+    std::vector<int> collectAllFreeHBTs() const;
 private:
     std::vector<HBTReservation> reservations_;
     mutable Stats stats_;
