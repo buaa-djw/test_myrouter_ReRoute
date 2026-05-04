@@ -396,6 +396,13 @@ int main(int argc, char** argv)
     rr_proxy.rejected_by_hbt_conflict = reroute_stats.rejected_by_hbt_conflict;
     rr_proxy.hbt_conflict_before = reroute_stats.hbt_conflict_before;
     rr_proxy.hbt_conflict_after = reroute_stats.hbt_conflict_after;
+    rr_proxy.tried_reattach_candidates = reroute_stats.tried_reattach_candidates;
+    rr_proxy.tried_ripup_candidates = reroute_stats.tried_ripup_candidates;
+    rr_proxy.accepted_reattach_candidates = reroute_stats.accepted_reattach_candidates;
+    rr_proxy.accepted_ripup_candidates = reroute_stats.accepted_ripup_candidates;
+    rr_proxy.rejected_by_cycle = reroute_stats.rejected_by_cycle;
+    rr_proxy.rejected_by_cross_die_not_supported = reroute_stats.rejected_by_cross_die_not_supported;
+    rr_proxy.rejected_by_invalid_hbt = reroute_stats.rejected_by_invalid_hbt;
     writeExperimentSummary(
         (output_dir / cfg.output.summary_report).string(),
         cfg,

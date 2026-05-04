@@ -118,6 +118,23 @@ struct RouteValidationResult
     int hbt_node_segment_mismatches = 0;
 };
 
+
+struct RerouteInfo
+{
+    bool touched = false;
+    bool improved = false;
+    std::string edit_type;
+    double delay_before = 0.0;
+    double delay_after = 0.0;
+    double objective_before = 0.0;
+    double objective_after = 0.0;
+    double wirelength_before = 0.0;
+    double wirelength_after = 0.0;
+    int hbt_count_before = 0;
+    int hbt_count_after = 0;
+    std::string reject_reason;
+};
+
 struct NetRouteResult
 {
     std::string net_name;
@@ -145,6 +162,7 @@ struct NetRouteResult
     // Per-net delay annotation result (filled by EDCompute).
     NetDelaySummary delay_summary;
     RouteValidationResult validation;
+    RerouteInfo reroute_info;
 };
 
 class PDTreeRouter
