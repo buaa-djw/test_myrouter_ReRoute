@@ -4,38 +4,56 @@
 #include <fstream>
 #include <unordered_map>
 
-void writeNetInfo(const std::string& path, const RouterDB& db, const std::vector<NetRouteResult>& results)
+namespace {
+
+double segmentLengthDbu(const RoutedSegment& seg)
+{
+    return std::abs(seg.p1.x - seg.p2.x) + std::abs(seg.p1.y - seg.p2.y);
+}
+
+}  // namespace
+
+void writeNetInfo(const std::string& path,
+                  const RouterDB& db,
+                  const std::vector<NetRouteResult>& results)
 {
     std::ofstream o(path);
     std::unordered_map<std::string, int> net_pin_count;
     for (const auto& net : db.nets) {
         net_pin_count[net.name] = static_cast<int>(net.pins.size());
     }
+
     for (const auto& r : results) {
         double wirelength = 0.0;
         double top_wirelength = 0.0;
         double bottom_wirelength = 0.0;
         int hbt_count = 0;
+
         for (const auto& s : r.segments) {
-            wirelength += std::abs(s.p1.x - s.p2.x) + std::abs(s.p1.y - s.p2.y);
-            if (!s.uses_hbt) {
-                if (s.p1.die == DieId::kTop) {
-                    top_wirelength += std::abs(s.p1.x - s.p2.x) + std::abs(s.p1.y - s.p2.y);
-                } else if (s.p1.die == DieId::kBottom) {
-                    bottom_wirelength += std::abs(s.p1.x - s.p2.x) + std::abs(s.p1.y - s.p2.y);
-                }
-            }
+            const double len = segmentLengthDbu(s);
+            wirelength += len;
             if (s.uses_hbt) {
                 ++hbt_count;
+                continue;
+            }
+            if (s.p1.die == DieId::kTop) {
+                top_wirelength += len;
+            } else if (s.p1.die == DieId::kBottom) {
+                bottom_wirelength += len;
             }
         }
-        const int pin_count = net_pin_count.count(r.net_name) ? net_pin_count[r.net_name] : r.delay_summary.pin_count;
+
+        const int pin_count = net_pin_count.count(r.net_name)
+                                  ? net_pin_count[r.net_name]
+                                  : r.delay_summary.pin_count;
+
         o << "NET " << r.net_name << "\n";
         o << "  type: " << (r.is_3d ? "3D" : "2D") << "\n";
         o << "  cost_mode: " << r.cost_mode << "\n";
         o << "  pin_count: " << pin_count << "\n";
         o << "  success: " << r.success << "\n";
         o << "  status: " << r.status << "\n";
+        o << "  fail_reason: " << r.fail_reason << "\n";
         o << "  route_cost_total: " << r.route_cost_total << "\n";
         o << "  route_wire_delay: " << r.route_wire_delay << "\n";
         o << "  route_parent_load_delay: " << r.route_parent_load_delay << "\n";
@@ -68,30 +86,20 @@ void writeNetInfo(const std::string& path, const RouterDB& db, const std::vector
         o << "  ed_total_delay_contrib: " << r.delay_summary.ed_total_delay_contrib << "\n";
         o << "  max_delay_pin_name: " << r.delay_summary.max_delay_pin_name << "\n";
         o << "  validation: " << (r.validation.valid ? "OK" : "INVALID") << "\n";
-        o << "  reroute_touched: " << r.reroute_info.touched << "
-";
-        o << "  reroute_improved: " << r.reroute_info.improved << "
-";
-        o << "  reroute_edit_type: " << r.reroute_info.edit_type << "
-";
-        o << "  reroute_delay_before: " << r.reroute_info.delay_before << "
-";
-        o << "  reroute_delay_after: " << r.reroute_info.delay_after << "
-";
-        o << "  reroute_objective_before: " << r.reroute_info.objective_before << "
-";
-        o << "  reroute_objective_after: " << r.reroute_info.objective_after << "
-";
-        o << "  reroute_wirelength_before: " << r.reroute_info.wirelength_before << "
-";
-        o << "  reroute_wirelength_after: " << r.reroute_info.wirelength_after << "
-";
-        o << "  reroute_hbt_count_before: " << r.reroute_info.hbt_count_before << "
-";
-        o << "  reroute_hbt_count_after: " << r.reroute_info.hbt_count_after << "
-";
-        o << "  reroute_reject_reason: " << r.reroute_info.reject_reason << "
-";
+
+        o << "  reroute_touched: " << r.reroute_info.touched << "\n";
+        o << "  reroute_improved: " << r.reroute_info.improved << "\n";
+        o << "  reroute_edit_type: " << r.reroute_info.edit_type << "\n";
+        o << "  reroute_delay_before: " << r.reroute_info.delay_before << "\n";
+        o << "  reroute_delay_after: " << r.reroute_info.delay_after << "\n";
+        o << "  reroute_objective_before: " << r.reroute_info.objective_before << "\n";
+        o << "  reroute_objective_after: " << r.reroute_info.objective_after << "\n";
+        o << "  reroute_wirelength_before: " << r.reroute_info.wirelength_before << "\n";
+        o << "  reroute_wirelength_after: " << r.reroute_info.wirelength_after << "\n";
+        o << "  reroute_hbt_count_before: " << r.reroute_info.hbt_count_before << "\n";
+        o << "  reroute_hbt_count_after: " << r.reroute_info.hbt_count_after << "\n";
+        o << "  reroute_reject_reason: " << r.reroute_info.reject_reason << "\n";
+
         o << "  tree_nodes: " << r.tree_nodes.size() << "\n";
         o << "  segments: " << r.segments.size() << "\n\n";
     }
