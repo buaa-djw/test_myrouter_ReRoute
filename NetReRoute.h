@@ -72,7 +72,18 @@ public:
         int old_hbt_count = 0, new_hbt_count = 0;
         double old_hbt_delay_contrib = 0, new_hbt_delay_contrib = 0;
         int changed_hbt_id_count = 0, changed_parent_count = 0, changed_segment_count = 0;
+        RoutedPoint child_attach_point{};
+        bool has_child_attach_point = false;
         std::string reject_reason;
+    };
+    struct HBTBranchRef
+    {
+        int old_hbt_id = -1;
+        int child_tree_node = -1;
+        int parent_tree_node = -1;
+        RoutedPoint parent_point{};
+        RoutedPoint child_point{};
+        std::vector<RoutedSegment> old_segments;
     };
     CriticalNetOptimizer(const RouterDB &db, const HybridGrid &grid, const PDTreeRouter &router, HBTResourceManager &hbt_manager, const Params &params);
     OptimizationStats optimize(std::vector<NetRouteResult> &results) const;
@@ -92,6 +103,7 @@ private:
     std::vector<int> collectAllUsedHBTsInNet(const NetRouteResult& result) const;
     std::vector<int> collectCandidateHBTsForReroute(const Net& net, const NetRouteResult& result, const RoutedPoint& parent_point, const RoutedPoint& sink_point, int old_hbt_id, int max_count) const;
     bool verifyHBTSwapApplied(const NetRouteResult& result, int old_hbt_id, int new_hbt_id, std::string& reason) const;
+    bool findBranchByHBTId(const NetRouteResult& result, int old_hbt_id, HBTBranchRef& out_ref) const;
     std::vector<NetEditCandidate> generateHBTSwapCandidates(const Net &net, const NetRouteResult &result, int sink_pin_index, int sink_tree_node, OptimizationStats *stats) const;
     std::vector<NetEditCandidate> generateRipupOneSinkCandidates(const Net &net, const NetRouteResult &result, int sink_pin_index, int sink_tree_node, OptimizationStats *stats) const;
     double evaluatePostOptimizationObjective(const NetRouteResult &result, const Net &net) const;
