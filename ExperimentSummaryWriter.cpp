@@ -126,6 +126,20 @@ void writeExperimentSummary(const std::string& path,
         o << "rejected_by_cycle=" << reroute_stats->rejected_by_cycle << "\n";
         o << "rejected_by_cross_die_not_supported=" << reroute_stats->rejected_by_cross_die_not_supported << "\n";
         o << "rejected_by_invalid_hbt=" << reroute_stats->rejected_by_invalid_hbt << "\n";
+        o << "tried_hbt_swap_candidates=" << reroute_stats->tried_hbt_swap_candidates << "\n";
+        o << "accepted_hbt_swap_candidates=" << reroute_stats->accepted_hbt_swap_candidates << "\n";
+        o << "tried_cross_die_ripup_candidates=" << reroute_stats->tried_cross_die_ripup_candidates << "\n";
+        o << "accepted_cross_die_ripup_candidates=" << reroute_stats->accepted_cross_die_ripup_candidates << "\n";
+        o << "tried_hbt_insert_candidates=" << reroute_stats->tried_hbt_insert_candidates << "\n";
+        o << "accepted_hbt_insert_candidates=" << reroute_stats->accepted_hbt_insert_candidates << "\n";
+        o << "tried_hbt_remove_candidates=" << reroute_stats->tried_hbt_remove_candidates << "\n";
+        o << "accepted_hbt_remove_candidates=" << reroute_stats->accepted_hbt_remove_candidates << "\n";
+        o << "rejected_by_no_free_hbt=" << reroute_stats->rejected_by_no_free_hbt << "\n";
+        o << "rejected_by_no_hbt_on_path=" << reroute_stats->rejected_by_no_hbt_on_path << "\n";
+        o << "changed_hbt_id_count=" << reroute_stats->changed_hbt_id_count << "\n";
+        o << "changed_hbt_count_total=" << reroute_stats->changed_hbt_count_total << "\n";
+        o << "hbt_count_before=" << reroute_stats->hbt_count_before << "\n";
+        o << "hbt_count_after=" << reroute_stats->hbt_count_after << "\n";
         o << "hbt_conflict_before=" << reroute_stats->hbt_conflict_before << "\n";
         o << "hbt_conflict_after=" << reroute_stats->hbt_conflict_after << "\n";
     }

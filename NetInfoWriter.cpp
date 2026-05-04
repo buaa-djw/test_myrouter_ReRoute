@@ -86,7 +86,6 @@ void writeNetInfo(const std::string& path,
         o << "  ed_total_delay_contrib: " << r.delay_summary.ed_total_delay_contrib << "\n";
         o << "  max_delay_pin_name: " << r.delay_summary.max_delay_pin_name << "\n";
         o << "  validation: " << (r.validation.valid ? "OK" : "INVALID") << "\n";
-
         o << "  reroute_touched: " << r.reroute_info.touched << "\n";
         o << "  reroute_improved: " << r.reroute_info.improved << "\n";
         o << "  reroute_edit_type: " << r.reroute_info.edit_type << "\n";

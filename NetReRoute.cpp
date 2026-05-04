@@ -98,6 +98,11 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
         auto rs = generateRipupOneSinkCandidates(net, result, sink_pin, sink_tree, &stats);
         cands.insert(cands.end(), rs.begin(), rs.end());
     }
+    if (params_.enable_hbt_swap)
+    {
+        auto hs = generateHBTSwapCandidates(net, result, sink_pin, sink_tree, &stats);
+        cands.insert(cands.end(), hs.begin(), hs.end());
+    }
     if (cands.empty())
         return false;
     NetRouteResult best = result;
@@ -107,10 +112,12 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
     for (auto &c : cands)
     {
         stats.tried_candidates++;
-        if (c.type == EditType::kRipupOneSinkBranch)
-            stats.tried_ripup_candidates++;
-        else
-            stats.tried_reattach_candidates++;
+        if (c.type == EditType::kRipupOneSinkBranch) stats.tried_ripup_candidates++;
+        else if (c.type == EditType::kReattachSinkSameDie) stats.tried_reattach_candidates++;
+        else if (c.type == EditType::kSwapHBT) stats.tried_hbt_swap_candidates++;
+        else if (c.type == EditType::kCrossDieRipupViaHBT) stats.tried_cross_die_ripup_candidates++;
+        else if (c.type == EditType::kInsertHBT) stats.tried_hbt_insert_candidates++;
+        else if (c.type == EditType::kRemoveHBT) stats.tried_hbt_remove_candidates++;
         auto snap = result;
         auto hs = hbt_manager_.makeSnapshot();
         std::string fr;
@@ -158,10 +165,12 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
     if (!applyRipupCandidate(net, result, bestc, hbt_manager_, fr))
         return false;
     stats.accepted_candidates++;
-    if (bestc.type == EditType::kRipupOneSinkBranch)
-        stats.accepted_ripup_candidates++;
-    else
-        stats.accepted_reattach_candidates++;
+    if (bestc.type == EditType::kRipupOneSinkBranch) stats.accepted_ripup_candidates++;
+    else if (bestc.type == EditType::kReattachSinkSameDie) stats.accepted_reattach_candidates++;
+    else if (bestc.type == EditType::kSwapHBT) stats.accepted_hbt_swap_candidates++;
+    else if (bestc.type == EditType::kCrossDieRipupViaHBT) stats.accepted_cross_die_ripup_candidates++;
+    else if (bestc.type == EditType::kInsertHBT) stats.accepted_hbt_insert_candidates++;
+    else if (bestc.type == EditType::kRemoveHBT) stats.accepted_hbt_remove_candidates++;
     stats.improved_nets++;
 
     auto final_timing = router_.evaluateTimingSummaryPublic(net, result);
@@ -339,3 +348,74 @@ bool CriticalNetOptimizer::replaceSinkIncomingBranch(const Net &, NetRouteResult
 bool CriticalNetOptimizer::rebuildTreeStatistics(const Net &, NetRouteResult &result) const { return router_.validateRouteResultTopologyPublic(result).valid; }
 
 double CriticalNetOptimizer::evaluatePostOptimizationObjective(const NetRouteResult &r, const Net &) const { return params_.objective_weight_max_delay * r.delay_summary.max_sink_delay + params_.objective_weight_avg_delay * r.delay_summary.avg_sink_delay + params_.objective_weight_hbt_delay * r.delay_summary.ed_hbt_delay_contrib + params_.objective_weight_hbt_count * r.delay_summary.total_hbt_cap + params_.objective_weight_wirelength_growth * r.delay_summary.total_wire_cap; }
+
+
+std::vector<int> CriticalNetOptimizer::collectHBTsOnPath(const NetRouteResult& result, int sink_tree_node) const
+{
+    std::vector<int> ids;
+    int cur = sink_tree_node;
+    while (cur >= 0 && cur < (int)result.tree_nodes.size()) {
+        const auto& tn = result.tree_nodes[cur];
+        if (tn.assigned_hbt_id >= 0) ids.push_back(tn.assigned_hbt_id);
+        for (int i = 0; i < tn.incoming_segment_count; ++i) {
+            const auto& s = result.segments[tn.incoming_segment_begin + i];
+            if (s.uses_hbt && s.hbt_id >= 0) ids.push_back(s.hbt_id);
+        }
+        cur = tn.parent_index;
+    }
+    std::sort(ids.begin(), ids.end());
+    ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+    return ids;
+}
+
+std::vector<int> CriticalNetOptimizer::collectCandidateHBTsForReroute(const Net& net, const NetRouteResult&, const RoutedPoint& parent_point, const RoutedPoint& sink_point, int old_hbt_id, int max_count) const
+{
+    std::vector<int> out;
+    Point2D mid{(parent_point.x + sink_point.x) / 2, (parent_point.y + sink_point.y) / 2};
+    auto near = hbt_manager_.collectFreeHBTsNear(grid_, mid, std::max(1, max_count));
+    out.insert(out.end(), near.begin(), near.end());
+    if (old_hbt_id >= 0 && hbt_manager_.isOwnedBy(old_hbt_id, net.name)) out.push_back(old_hbt_id);
+    std::sort(out.begin(), out.end()); out.erase(std::unique(out.begin(), out.end()), out.end());
+    if ((int)out.size() > max_count) out.resize(max_count);
+    if (params_.verbose) std::cout << "[NetReRoute][HBT] collect candidates net=" << net.name << " old=" << old_hbt_id << " count=" << out.size() << "
+";
+    return out;
+}
+
+bool CriticalNetOptimizer::buildCrossDieBranchViaHBT(const RoutedPoint& parent_point, const RoutedPoint& sink_point, int hbt_id, std::vector<RoutedSegment>& out_segments, std::string& fail_reason) const
+{
+    if (normalizeDieLocal(parent_point.die) == normalizeDieLocal(sink_point.die)) { fail_reason = "same_die"; return false; }
+    Point2D hp; if (!grid_.getHBTPoint(hbt_id, hp)) { fail_reason = "invalid_hbt"; return false; }
+    out_segments.clear();
+    RoutedPoint ph{hp.x, hp.y, parent_point.die};
+    RoutedPoint sh{hp.x, hp.y, sink_point.die};
+    std::vector<RoutedSegment> a,b;
+    if (!router_.build2DConnectionPublic(parent_point, ph, a) || !router_.build2DConnectionPublic(sh, sink_point, b)) { fail_reason = "build2d_failed"; return false; }
+    out_segments.insert(out_segments.end(), a.begin(), a.end());
+    out_segments.push_back(RoutedSegment{ph, sh, -1, true, hbt_id});
+    out_segments.insert(out_segments.end(), b.begin(), b.end());
+    return true;
+}
+
+std::vector<CriticalNetOptimizer::NetEditCandidate> CriticalNetOptimizer::generateHBTSwapCandidates(const Net &net, const NetRouteResult &result, int sink_pin_index, int sink_tree_node, OptimizationStats *stats) const
+{
+    std::vector<NetEditCandidate> out;
+    auto old_hbts = collectHBTsOnPath(result, sink_tree_node);
+    if (old_hbts.empty()) { if (stats) stats->rejected_by_no_hbt_on_path++; return out; }
+    const auto pp = result.tree_nodes[result.tree_nodes[sink_tree_node].parent_index].point;
+    const auto sp = router_.pinToPointPublic(net.pins[sink_pin_index]);
+    for (int old_id : old_hbts) {
+        for (int new_id : collectCandidateHBTsForReroute(net, result, pp, sp, old_id, params_.beam_width)) {
+            if (new_id == old_id) continue;
+            std::vector<RoutedSegment> segs; std::string fr;
+            if (!buildCrossDieBranchViaHBT(pp, sp, new_id, segs, fr)) continue;
+            NetEditCandidate c; c.type = EditType::kSwapHBT; c.sink_pin_index=sink_pin_index; c.sink_tree_node=sink_tree_node; c.old_parent_tree_node=result.tree_nodes[sink_tree_node].parent_index; c.new_parent_tree_node=c.old_parent_tree_node;
+            c.old_hbt_id=old_id; c.new_hbt_id=new_id; c.old_hbt_ids={old_id}; c.new_hbt_ids={new_id}; c.new_segments=segs; c.changed_hbt_id_count=1; c.changed_segment_count=(int)segs.size();
+            out.push_back(c);
+            if (params_.verbose) std::cout << "[NetReRoute][candidate] net="<<net.name<<" type=hbt_swap old_hbt="<<old_id<<" new_hbt="<<new_id<<" segs="<<segs.size()<<"
+";
+            if ((int)out.size() >= params_.max_iterations_per_net) return out;
+        }
+    }
+    return out;
+}

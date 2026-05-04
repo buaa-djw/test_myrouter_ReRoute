@@ -96,6 +96,11 @@ void writeNetPlotData(const std::string& root_dir, const NetRouteResult& result)
     j["ed_hbt_delay_contrib"] = result.delay_summary.ed_hbt_delay_contrib;
     j["ed_total_delay_contrib"] = result.delay_summary.ed_total_delay_contrib;
     j["validation"] = {{"valid", result.validation.valid}, {"errors", result.validation.errors}};
+    j["reroute_touched"] = result.reroute_info.touched;
+    j["reroute_edit_type"] = result.reroute_info.edit_type;
+    j["reroute_old_hbt_id"] = result.reroute_info.old_hbt_id;
+    j["reroute_new_hbt_id"] = result.reroute_info.new_hbt_id;
+    j["reroute_changed_hbt_id_count"] = result.reroute_info.changed_hbt_id_count;
     j["points"] = json::array();
     j["segments"] = json::array();
 

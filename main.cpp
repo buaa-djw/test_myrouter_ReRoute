@@ -406,6 +406,20 @@ int main(int argc, char** argv)
     rr_proxy.rejected_by_cycle = reroute_stats.rejected_by_cycle;
     rr_proxy.rejected_by_cross_die_not_supported = reroute_stats.rejected_by_cross_die_not_supported;
     rr_proxy.rejected_by_invalid_hbt = reroute_stats.rejected_by_invalid_hbt;
+    rr_proxy.tried_hbt_swap_candidates = reroute_stats.tried_hbt_swap_candidates;
+    rr_proxy.accepted_hbt_swap_candidates = reroute_stats.accepted_hbt_swap_candidates;
+    rr_proxy.tried_cross_die_ripup_candidates = reroute_stats.tried_cross_die_ripup_candidates;
+    rr_proxy.accepted_cross_die_ripup_candidates = reroute_stats.accepted_cross_die_ripup_candidates;
+    rr_proxy.tried_hbt_insert_candidates = reroute_stats.tried_hbt_insert_candidates;
+    rr_proxy.accepted_hbt_insert_candidates = reroute_stats.accepted_hbt_insert_candidates;
+    rr_proxy.tried_hbt_remove_candidates = reroute_stats.tried_hbt_remove_candidates;
+    rr_proxy.accepted_hbt_remove_candidates = reroute_stats.accepted_hbt_remove_candidates;
+    rr_proxy.rejected_by_no_free_hbt = reroute_stats.rejected_by_no_free_hbt;
+    rr_proxy.rejected_by_no_hbt_on_path = reroute_stats.rejected_by_no_hbt_on_path;
+    rr_proxy.changed_hbt_id_count = reroute_stats.changed_hbt_id_count;
+    rr_proxy.changed_hbt_count_total = reroute_stats.changed_hbt_count_total;
+    rr_proxy.hbt_count_before = reroute_stats.hbt_count_before;
+    rr_proxy.hbt_count_after = reroute_stats.hbt_count_after;
     writeExperimentSummary(
         (output_dir / cfg.output.summary_report).string(),
         cfg,
