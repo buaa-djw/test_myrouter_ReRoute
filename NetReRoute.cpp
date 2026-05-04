@@ -59,6 +59,7 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
     if (sink_tree < 0 || sink_tree == result.root_tree_index)
         return false;
     double base_obj = evaluatePostOptimizationObjective(result, net);
+    const double base_max_delay = result.delay_summary.max_sink_delay;
     auto base_t = router_.evaluateTimingSummaryPublic(net, result);
     std::vector<NetEditCandidate> cands;
     if (params_.enable_reattach)
@@ -171,6 +172,20 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
     else if (bestc.type == EditType::kInsertHBT) stats.accepted_hbt_insert_candidates++;
     else if (bestc.type == EditType::kRemoveHBT) stats.accepted_hbt_remove_candidates++;
     stats.improved_nets++;
+
+    auto final_timing = router_.evaluateTimingSummaryPublic(net, result);
+    result.reroute_info.touched = true;
+    result.reroute_info.improved = true;
+    result.reroute_info.edit_type = (bestc.type == EditType::kRipupOneSinkBranch) ? "ripup_one_sink" : "reattach_same_die";
+    result.reroute_info.delay_before = base_max_delay;
+    result.reroute_info.delay_after = result.delay_summary.max_sink_delay;
+    result.reroute_info.objective_before = base_obj;
+    result.reroute_info.objective_after = best_obj;
+    result.reroute_info.wirelength_before = base_t.total_wirelength;
+    result.reroute_info.wirelength_after = final_timing.total_wirelength;
+    result.reroute_info.hbt_count_before = base_t.hbt_count;
+    result.reroute_info.hbt_count_after = final_timing.hbt_count;
+    result.reroute_info.reject_reason.clear();
     return true;
 }
 
@@ -327,7 +342,7 @@ bool CriticalNetOptimizer::replaceSinkIncomingBranch(const Net &, NetRouteResult
         }
     }
     result.segments = std::move(reb);
-    return rebuildTreeStatistics(*(Net *)nullptr, result);
+    return router_.validateRouteResultTopologyPublic(result).valid;
 }
 
 bool CriticalNetOptimizer::rebuildTreeStatistics(const Net &, NetRouteResult &result) const { return router_.validateRouteResultTopologyPublic(result).valid; }

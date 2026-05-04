@@ -328,8 +328,11 @@ int main(int argc, char** argv)
             }
         }
         runEdcomputeSanityChecks(results);
-        std::cout << "[main][reroute] visited=" << reroute_stats.visited_nets << " improved=" << reroute_stats.improved_nets << " tried=" << reroute_stats.tried_candidates << " accepted=" << reroute_stats.accepted_candidates << "
-";
+        std::cout << "[main][reroute] visited=" << reroute_stats.visited_nets
+                  << " improved=" << reroute_stats.improved_nets
+                  << " tried=" << reroute_stats.tried_candidates
+                  << " accepted=" << reroute_stats.accepted_candidates
+                  << "\n";
     }
 
     // ------------------------------------------------------------
