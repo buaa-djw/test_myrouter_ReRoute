@@ -20,6 +20,8 @@ public:
         bool enable_reattach = true;
         bool enable_ripup = false;
         bool enable_hbt_swap = false;
+        bool enable_hbt_insert = false;
+        bool enable_hbt_remove = false;
         double objective_weight_max_delay = 1.0;
         double objective_weight_avg_delay = 0.2;
         double objective_weight_wirelength_growth = 0.05;
@@ -28,6 +30,15 @@ public:
         int beam_width = 4;
         std::string target_net_type = "all";
         bool debug_force_accept_hbt_swap = false;
+        bool debug_force_accept_hbt_insert = false;
+        bool debug_force_accept_hbt_remove = false;
+        bool allow_same_die_hbt_detour = false;
+        int max_hbt_insert_candidates_per_branch = 8;
+        int max_hbt_remove_candidates_per_branch = 8;
+        int max_hbt_swap_candidates_per_branch = 8;
+        double min_predicted_gain_for_hbt_insert = 0.0;
+        double min_predicted_gain_for_hbt_remove = 0.0;
+        double min_predicted_gain_for_hbt_swap = 0.0;
         bool verbose = true;
     };
     struct OptimizationStats
@@ -54,24 +65,26 @@ public:
     };
     enum class EditType
     {
-        kReattachSinkSameDie,
-        kRipupOneSinkBranch,
-        kCrossDieRipupViaHBT,
+        kNone,
+        kReattachSameDie,
+        kRipupOneSink,
+        kCrossDieRipup,
         kSwapHBT,
         kInsertHBT,
         kRemoveHBT
     };
     struct NetEditCandidate
     {
-        EditType type = EditType::kReattachSinkSameDie;
+        EditType type = EditType::kNone;
         int sink_pin_index = -1, sink_tree_node = -1, old_parent_tree_node = -1, new_parent_tree_node = -1;
         std::vector<RoutedSegment> old_segments, new_segments;
         std::vector<int> old_hbt_ids, new_hbt_ids;
-        int old_hbt_id = -1, new_hbt_id = -1;
+        std::vector<int> inserted_hbt_ids, removed_hbt_ids;
+        int old_hbt_id = -1, new_hbt_id = -1, inserted_hbt_id = -1, removed_hbt_id = -1;
         double old_objective = 0, new_objective = 0, old_max_delay = 0, new_max_delay = 0, old_avg_delay = 0, new_avg_delay = 0, old_wirelength = 0, new_wirelength = 0;
         int old_hbt_count = 0, new_hbt_count = 0;
         double old_hbt_delay_contrib = 0, new_hbt_delay_contrib = 0;
-        int changed_hbt_id_count = 0, changed_parent_count = 0, changed_segment_count = 0;
+        int changed_hbt_id_count = 0, changed_hbt_count_delta = 0, changed_parent_count = 0, changed_segment_count = 0;
         RoutedPoint child_attach_point{};
         bool has_child_attach_point = false;
         std::string reject_reason;

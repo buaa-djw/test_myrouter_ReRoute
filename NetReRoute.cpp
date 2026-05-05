@@ -114,7 +114,7 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
             }
 
             NetEditCandidate c;
-            c.type = EditType::kReattachSinkSameDie;
+            c.type = EditType::kReattachSameDie;
             c.sink_pin_index = sink_pin;
             c.sink_tree_node = sink_tree;
             c.old_parent_tree_node = result.tree_nodes[sink_tree].parent_index;
@@ -146,11 +146,11 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
 
     for (auto &c : cands) {
         stats.tried_candidates++;
-        if (c.type == EditType::kRipupOneSinkBranch) {
+        if (c.type == EditType::kRipupOneSink) {
             stats.tried_ripup_candidates++;
-        } else if (c.type == EditType::kReattachSinkSameDie) {
+        } else if (c.type == EditType::kReattachSameDie) {
             stats.tried_reattach_candidates++;
-        } else if (c.type == EditType::kCrossDieRipupViaHBT) {
+        } else if (c.type == EditType::kCrossDieRipup) {
             stats.tried_cross_die_ripup_candidates++;
         } else if (c.type == EditType::kInsertHBT) {
             stats.tried_hbt_insert_candidates++;
@@ -358,13 +358,13 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
     }
 
     stats.accepted_candidates++;
-    if (bestc.type == EditType::kRipupOneSinkBranch) {
+    if (bestc.type == EditType::kRipupOneSink) {
         stats.accepted_ripup_candidates++;
-    } else if (bestc.type == EditType::kReattachSinkSameDie) {
+    } else if (bestc.type == EditType::kReattachSameDie) {
         stats.accepted_reattach_candidates++;
     } else if (bestc.type == EditType::kSwapHBT) {
         stats.accepted_hbt_swap_candidates++;
-    } else if (bestc.type == EditType::kCrossDieRipupViaHBT) {
+    } else if (bestc.type == EditType::kCrossDieRipup) {
         stats.accepted_cross_die_ripup_candidates++;
     } else if (bestc.type == EditType::kInsertHBT) {
         stats.accepted_hbt_insert_candidates++;
@@ -384,11 +384,11 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
     result.reroute_info.improved = (best_obj + 1e-12 < base_obj);
     result.reroute_info.force_accepted = best_force_accepted;
     result.reroute_info.edit_type =
-        (bestc.type == EditType::kRipupOneSinkBranch) ? "ripup_one_sink" :
+        (bestc.type == EditType::kRipupOneSink) ? "ripup_one_sink" :
         (bestc.type == EditType::kSwapHBT) ? "hbt_swap" :
-        (bestc.type == EditType::kCrossDieRipupViaHBT) ? "cross_die_ripup_via_hbt" :
-        (bestc.type == EditType::kInsertHBT) ? "insert_hbt" :
-        (bestc.type == EditType::kRemoveHBT) ? "remove_hbt" :
+        (bestc.type == EditType::kCrossDieRipup) ? "cross_die_ripup" :
+        (bestc.type == EditType::kInsertHBT) ? "hbt_insert" :
+        (bestc.type == EditType::kRemoveHBT) ? "hbt_remove" :
         "reattach_same_die";
     result.reroute_info.delay_before = base_max_delay;
     result.reroute_info.delay_after = result.delay_summary.max_sink_delay;
@@ -469,7 +469,7 @@ std::vector<CriticalNetOptimizer::NetEditCandidate> CriticalNetOptimizer::genera
         if (!router_.build2DConnectionPublic(pp, sp, segs))
             continue;
         NetEditCandidate c;
-        c.type = EditType::kRipupOneSinkBranch;
+        c.type = EditType::kRipupOneSink;
         c.sink_pin_index = sink_pin_index;
         c.sink_tree_node = sink_tree_node;
         c.old_parent_tree_node = oldp;
