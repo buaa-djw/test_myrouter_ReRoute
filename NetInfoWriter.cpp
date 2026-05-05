@@ -102,6 +102,8 @@ void writeNetInfo(const std::string& path,
         o << "  reroute_new_hbt_id: " << r.reroute_info.new_hbt_id << "\n";
         o << "  reroute_changed_hbt_id_count: " << r.reroute_info.changed_hbt_id_count << "\n";
         o << "  reroute_changed_segment_count: " << r.reroute_info.changed_segment_count << "\n";
+        o << "  reroute_hbt_delay_before: " << r.reroute_info.hbt_delay_before << "\n";
+        o << "  reroute_hbt_delay_after: " << r.reroute_info.hbt_delay_after << "\n";
         o << "  reroute_force_accepted: " << r.reroute_info.force_accepted << "\n";
 
         o << "  tree_nodes: " << r.tree_nodes.size() << "\n";

@@ -104,6 +104,8 @@ private:
     std::vector<int> collectCandidateHBTsForReroute(const Net& net, const NetRouteResult& result, const RoutedPoint& parent_point, const RoutedPoint& sink_point, int old_hbt_id, int max_count) const;
     bool verifyHBTSwapApplied(const NetRouteResult& result, int old_hbt_id, int new_hbt_id, std::string& reason) const;
     bool findBranchByHBTId(const NetRouteResult& result, int old_hbt_id, HBTBranchRef& out_ref) const;
+    bool resultUsesHBT(const NetRouteResult& result) const;
+    bool resultIsRoutedAs3D(const NetRouteResult& result, const Net* net) const;
     std::vector<NetEditCandidate> generateHBTSwapCandidates(const Net &net, const NetRouteResult &result, int sink_pin_index, int sink_tree_node, OptimizationStats *stats) const;
     std::vector<NetEditCandidate> generateRipupOneSinkCandidates(const Net &net, const NetRouteResult &result, int sink_pin_index, int sink_tree_node, OptimizationStats *stats) const;
     double evaluatePostOptimizationObjective(const NetRouteResult &result, const Net &net) const;
