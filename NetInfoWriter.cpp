@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <fstream>
+#include <sstream>
 #include <unordered_map>
 
 namespace {
@@ -9,6 +10,16 @@ namespace {
 double segmentLengthDbu(const RoutedSegment& seg)
 {
     return std::abs(seg.p1.x - seg.p2.x) + std::abs(seg.p1.y - seg.p2.y);
+}
+
+std::string joinInts(const std::vector<int>& vals)
+{
+    std::ostringstream oss;
+    for (size_t i = 0; i < vals.size(); ++i) {
+        if (i) oss << ",";
+        oss << vals[i];
+    }
+    return oss.str();
 }
 
 }  // namespace
@@ -100,8 +111,19 @@ void writeNetInfo(const std::string& path,
         o << "  reroute_reject_reason: " << r.reroute_info.reject_reason << "\n";
         o << "  reroute_old_hbt_id: " << r.reroute_info.old_hbt_id << "\n";
         o << "  reroute_new_hbt_id: " << r.reroute_info.new_hbt_id << "\n";
+        o << "  reroute_inserted_hbt_id: " << r.reroute_info.inserted_hbt_id << "\n";
+        o << "  reroute_removed_hbt_id: " << r.reroute_info.removed_hbt_id << "\n";
+        o << "  reroute_old_hbt_ids: " << joinInts(r.reroute_info.old_hbt_ids) << "\n";
+        o << "  reroute_new_hbt_ids: " << joinInts(r.reroute_info.new_hbt_ids) << "\n";
+        o << "  reroute_inserted_hbt_ids: " << joinInts(r.reroute_info.inserted_hbt_ids) << "\n";
+        o << "  reroute_removed_hbt_ids: " << joinInts(r.reroute_info.removed_hbt_ids) << "\n";
         o << "  reroute_changed_hbt_id_count: " << r.reroute_info.changed_hbt_id_count << "\n";
+        o << "  reroute_changed_hbt_count_delta: " << r.reroute_info.changed_hbt_count_delta << "\n";
         o << "  reroute_changed_segment_count: " << r.reroute_info.changed_segment_count << "\n";
+        o << "  reroute_max_delay_before: " << r.reroute_info.max_delay_before << "\n";
+        o << "  reroute_max_delay_after: " << r.reroute_info.max_delay_after << "\n";
+        o << "  reroute_avg_delay_before: " << r.reroute_info.avg_delay_before << "\n";
+        o << "  reroute_avg_delay_after: " << r.reroute_info.avg_delay_after << "\n";
         o << "  reroute_hbt_delay_before: " << r.reroute_info.hbt_delay_before << "\n";
         o << "  reroute_hbt_delay_after: " << r.reroute_info.hbt_delay_after << "\n";
         o << "  reroute_force_accepted: " << r.reroute_info.force_accepted << "\n";

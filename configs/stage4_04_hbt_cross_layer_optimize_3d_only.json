@@ -1,0 +1,14 @@
+{
+  "experiment_name": "stage4_04_hbt_cross_layer_optimize_3d_only",
+  "reroute": {
+    "enable": true,
+    "enable_hbt_insert": true,
+    "enable_hbt_remove": true,
+    "enable_hbt_swap": true,
+    "target_net_type": "3d_only",
+    "debug_force_accept_hbt_insert": false,
+    "debug_force_accept_hbt_remove": false,
+    "debug_force_accept_hbt_swap": false,
+    "verbose": true
+  }
+}

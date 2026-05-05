@@ -142,6 +142,10 @@ void writeExperimentSummary(const std::string& path,
         o << "rejected_by_non_3d_net=" << reroute_stats->rejected_by_non_3d_net << "\n";
         o << "rejected_by_build_hbt_branch_failed=" << reroute_stats->rejected_by_build_hbt_branch_failed << "\n";
         o << "rejected_by_hbt_swap_not_applied=" << reroute_stats->rejected_by_hbt_swap_not_applied << "\n";
+        o << "rejected_by_hbt_insert_not_applied=" << reroute_stats->rejected_by_hbt_insert_not_applied << "\n";
+        o << "rejected_by_hbt_remove_not_applied=" << reroute_stats->rejected_by_hbt_remove_not_applied << "\n";
+        o << "rejected_by_no_predicted_gain=" << reroute_stats->rejected_by_no_predicted_gain << "\n";
+        o << "rejected_by_cross_die_requires_hbt=" << reroute_stats->rejected_by_cross_die_requires_hbt << "\n";
         o << "rejected_by_no_objective_improvement=" << reroute_stats->rejected_by_no_objective_improvement << "\n";
         o << "rejected_by_force_verify_failed=" << reroute_stats->rejected_by_force_verify_failed << "\n";
         o << "changed_hbt_id_count=" << reroute_stats->changed_hbt_id_count << "\n";
@@ -151,5 +155,10 @@ void writeExperimentSummary(const std::string& path,
         o << "hbt_conflict_before=" << reroute_stats->hbt_conflict_before << "\n";
         o << "hbt_conflict_after=" << reroute_stats->hbt_conflict_after << "\n";
         o << "hbt_swap_force_accept_used=" << reroute_stats->hbt_swap_force_accept_used << "\n";
+        o << "hbt_insert_force_accept_used=" << reroute_stats->hbt_insert_force_accept_used << "\n";
+        o << "hbt_remove_force_accept_used=" << reroute_stats->hbt_remove_force_accept_used << "\n";
+        o << "inserted_hbt_count=" << reroute_stats->inserted_hbt_count << "\n";
+        o << "removed_hbt_count=" << reroute_stats->removed_hbt_count << "\n";
+        o << "swapped_hbt_count=" << reroute_stats->swapped_hbt_count << "\n";
     }
 }
