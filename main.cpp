@@ -309,6 +309,8 @@ int main(int argc, char** argv)
         rr_params.enable_reattach = cfg.reroute.enable_reattach;
         rr_params.enable_ripup = cfg.reroute.enable_ripup;
         rr_params.enable_hbt_swap = cfg.reroute.enable_hbt_swap;
+        rr_params.enable_hbt_insert = cfg.reroute.enable_hbt_insert;
+        rr_params.enable_hbt_remove = cfg.reroute.enable_hbt_remove;
         rr_params.beam_width = cfg.reroute.beam_width;
         rr_params.objective_weight_max_delay = cfg.reroute.objective_weight_max_delay;
         rr_params.objective_weight_avg_delay = cfg.reroute.objective_weight_avg_delay;
@@ -318,6 +320,15 @@ int main(int argc, char** argv)
         rr_params.verbose = cfg.reroute.verbose;
         rr_params.target_net_type = cfg.reroute.target_net_type;
         rr_params.debug_force_accept_hbt_swap = cfg.reroute.debug_force_accept_hbt_swap;
+        rr_params.debug_force_accept_hbt_insert = cfg.reroute.debug_force_accept_hbt_insert;
+        rr_params.debug_force_accept_hbt_remove = cfg.reroute.debug_force_accept_hbt_remove;
+        rr_params.allow_same_die_hbt_detour = cfg.reroute.allow_same_die_hbt_detour;
+        rr_params.max_hbt_insert_candidates_per_branch = cfg.reroute.max_hbt_insert_candidates_per_branch;
+        rr_params.max_hbt_remove_candidates_per_branch = cfg.reroute.max_hbt_remove_candidates_per_branch;
+        rr_params.max_hbt_swap_candidates_per_branch = cfg.reroute.max_hbt_swap_candidates_per_branch;
+        rr_params.min_predicted_gain_for_hbt_insert = cfg.reroute.min_predicted_gain_for_hbt_insert;
+        rr_params.min_predicted_gain_for_hbt_remove = cfg.reroute.min_predicted_gain_for_hbt_remove;
+        rr_params.min_predicted_gain_for_hbt_swap = cfg.reroute.min_predicted_gain_for_hbt_swap;
         CriticalNetOptimizer optimizer(db, grid, router, hbt_manager, rr_params);
         reroute_stats = optimizer.optimize(results);
         hbt_manager.rebuildFromRouteResults(results, &std::cout);
@@ -424,6 +435,12 @@ int main(int argc, char** argv)
     rr_proxy.changed_hbt_count_total = reroute_stats.changed_hbt_count_total;
     rr_proxy.hbt_count_before = reroute_stats.hbt_count_before;
     rr_proxy.hbt_count_after = reroute_stats.hbt_count_after;
+    rr_proxy.hbt_swap_force_accept_used = reroute_stats.hbt_swap_force_accept_used;
+    rr_proxy.hbt_insert_force_accept_used = reroute_stats.hbt_insert_force_accept_used;
+    rr_proxy.hbt_remove_force_accept_used = reroute_stats.hbt_remove_force_accept_used;
+    rr_proxy.inserted_hbt_count = reroute_stats.inserted_hbt_count;
+    rr_proxy.removed_hbt_count = reroute_stats.removed_hbt_count;
+    rr_proxy.swapped_hbt_count = reroute_stats.swapped_hbt_count;
     writeExperimentSummary(
         (output_dir / cfg.output.summary_report).string(),
         cfg,

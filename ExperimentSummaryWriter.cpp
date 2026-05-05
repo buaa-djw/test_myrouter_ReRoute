@@ -151,5 +151,10 @@ void writeExperimentSummary(const std::string& path,
         o << "hbt_conflict_before=" << reroute_stats->hbt_conflict_before << "\n";
         o << "hbt_conflict_after=" << reroute_stats->hbt_conflict_after << "\n";
         o << "hbt_swap_force_accept_used=" << reroute_stats->hbt_swap_force_accept_used << "\n";
+        o << "hbt_insert_force_accept_used=" << reroute_stats->hbt_insert_force_accept_used << "\n";
+        o << "hbt_remove_force_accept_used=" << reroute_stats->hbt_remove_force_accept_used << "\n";
+        o << "inserted_hbt_count=" << reroute_stats->inserted_hbt_count << "\n";
+        o << "removed_hbt_count=" << reroute_stats->removed_hbt_count << "\n";
+        o << "swapped_hbt_count=" << reroute_stats->swapped_hbt_count << "\n";
     }
 }

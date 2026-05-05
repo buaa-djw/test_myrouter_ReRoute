@@ -1,0 +1,12 @@
+{
+  "experiment_name": "stage4_01_hbt_insert_force_3d_only",
+  "reroute": {
+    "enable": true,
+    "enable_hbt_insert": true,
+    "enable_hbt_remove": false,
+    "enable_hbt_swap": false,
+    "target_net_type": "3d_only",
+    "debug_force_accept_hbt_insert": true,
+    "verbose": true
+  }
+}
