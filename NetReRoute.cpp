@@ -8,6 +8,19 @@
 namespace
 {
     DieId normalizeDieLocal(DieId d) { return (d == DieId::kTop || d == DieId::kBottom) ? d : DieId::kTop; }
+
+    const char* dieIdToStringLocal(DieId d)
+    {
+        switch (d) {
+        case DieId::kTop:
+            return "Top";
+        case DieId::kBottom:
+            return "Bottom";
+        case DieId::kUnknown:
+        default:
+            return "Unknown";
+        }
+    }
 }
 CriticalNetOptimizer::CriticalNetOptimizer(const RouterDB &db, const HybridGrid &grid, const PDTreeRouter &router, HBTResourceManager &hbt_manager, const Params &params) : db_(db), grid_(grid), router_(router), hbt_manager_(hbt_manager), params_(params) {}
 
@@ -71,6 +84,7 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
     double base_obj = evaluatePostOptimizationObjective(result, net);
     const double base_max_delay = result.delay_summary.max_sink_delay;
     auto base_t = router_.evaluateTimingSummaryPublic(net, result);
+    const double base_hbt_delay = result.delay_summary.ed_hbt_delay_contrib;
     std::vector<NetEditCandidate> cands;
     if (params_.enable_reattach)
     {
@@ -189,39 +203,32 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
             rollbackToSnapshot(result, snap, hbt_manager_, hs);
             continue;
         }
-        bool force_ok = false;
-        if (force_mode) {
-            force_ok = true;
-            if (!result.validation.valid) force_ok = false;
-            if (force_ok && t.hbt_count > base_t.hbt_count) force_ok = false; // requires HBT conflict = 0
-            if (force_ok && !result.delay_summary.ready) force_ok = false; // EDCompute ready
-            std::string vr;
-            if (force_ok) force_ok = verifyHBTSwapApplied(result, c.old_hbt_id, c.new_hbt_id, vr);
-            if (force_ok && c.old_hbt_id == c.new_hbt_id) force_ok = false;
+        bool force_ok = force_mode;
+        if (force_ok) {
+            if (!result.delay_summary.ready) force_ok = false;
+            if (force_ok && !result.validation.valid) force_ok = false;
+            // In Stage 3A force-accept mode, do not reject by delay, wirelength, or
+            // HBT-count objective. HBT resource conflicts are already checked by
+            // HBTResourceManager::reserve() in applyRipupCandidate().
+            std::string vr; if (force_ok) force_ok = verifyHBTSwapApplied(result, c.old_hbt_id, c.new_hbt_id, vr);
             if (!force_ok) {
-                stats.rejected_by_force_verify_failed++;
-                c.reject_reason = "force_verify_failed";
+                stats.rejected_by_hbt_swap_not_applied++;
+                std::cout << "[NetReRoute][reject] net=" << net.name << " type=hbt_swap old_hbt=" << c.old_hbt_id
+                          << " new_hbt=" << c.new_hbt_id << " reason=not_applied obj_before=" << base_obj
+                          << " obj_after=" << obj << " wl_before=" << base_t.total_wirelength
+                          << " wl_after=" << t.total_wirelength << " delay_before=" << snap.delay_summary.max_sink_delay
+                          << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
             }
         }
-        if (force_ok)
+        if (obj + 1e-12 < best_obj || force_ok)
         {
             found = true;
             best = result;
             best_obj = obj;
             bestc = c;
-            stats.hbt_swap_force_accept_used = 1;
-        }
-        else if (obj + 1e-12 < best_obj)
-        {
-            found = true;
-            best = result;
-            best_obj = obj;
-            bestc = c;
-        }
-        else
-        {
-            stats.rejected_by_no_objective_improvement++;
-            c.reject_reason = "no_objective_improvement";
+            if (force_ok) {
+                stats.hbt_swap_force_accept_used = 1;
+            }
         }
         rollbackToSnapshot(result, snap, hbt_manager_, hs);
     }
@@ -238,6 +245,7 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
     else if (bestc.type == EditType::kInsertHBT) stats.accepted_hbt_insert_candidates++;
     else if (bestc.type == EditType::kRemoveHBT) stats.accepted_hbt_remove_candidates++;
     stats.changed_hbt_id_count += bestc.changed_hbt_id_count;
+    stats.changed_hbt_count_total += (bestc.new_hbt_count - bestc.old_hbt_count);
     stats.improved_nets++;
 
     auto final_timing = router_.evaluateTimingSummaryPublic(net, result);
@@ -256,9 +264,9 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
     result.reroute_info.new_hbt_id = bestc.new_hbt_id;
     result.reroute_info.changed_hbt_id_count = bestc.changed_hbt_id_count;
     result.reroute_info.changed_segment_count = bestc.changed_segment_count;
-    result.reroute_info.hbt_delay_before = base_t.hbt_delay;
-    result.reroute_info.hbt_delay_after = final_timing.hbt_delay;
-    result.reroute_info.force_accepted = (bestc.type == EditType::kSwapHBT && params_.debug_force_accept_hbt_swap && stats.hbt_swap_force_accept_used == 1);
+    result.reroute_info.hbt_delay_before = base_hbt_delay;
+    result.reroute_info.hbt_delay_after = result.delay_summary.ed_hbt_delay_contrib;
+    result.reroute_info.force_accepted = (bestc.type == EditType::kSwapHBT && params_.debug_force_accept_hbt_swap);
     result.reroute_info.reject_reason.clear();
     if (bestc.type == EditType::kSwapHBT) {
         const int force = (bestc.type == EditType::kSwapHBT && params_.debug_force_accept_hbt_swap) ? 1 : 0;
@@ -542,7 +550,7 @@ std::vector<CriticalNetOptimizer::NetEditCandidate> CriticalNetOptimizer::genera
         if (!findBranchByHBTId(result, old_id, branch)) continue;
         if (params_.verbose) std::cout << "[NetReRoute][HBT-SWAP][branch] net=" << net.name << " old_hbt_id=" << old_id
                                        << " parent_node=" << branch.parent_tree_node << " child_node=" << branch.child_tree_node
-                                       << " parent_die=" << branch.parent_point.die << " child_die=" << branch.child_point.die << "\n";
+                                       << " parent_die=" << dieIdToStringLocal(branch.parent_point.die) << " child_die=" << dieIdToStringLocal(branch.child_point.die) << "\n";
         if (normalizeDieLocal(branch.parent_point.die) == normalizeDieLocal(branch.child_point.die)) {
             if (stats) stats->rejected_by_build_hbt_branch_failed++;
             if (params_.verbose) std::cout << "[NetReRoute][HBT-SWAP][build] net=" << net.name << " old_hbt_id=" << old_id << " reason=same_die\n";
