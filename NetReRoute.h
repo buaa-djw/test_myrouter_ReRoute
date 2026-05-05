@@ -50,6 +50,9 @@ public:
         int rejected_by_no_free_hbt = 0, rejected_by_no_hbt_on_path = 0, rejected_by_non_3d_net = 0, rejected_by_build_hbt_branch_failed = 0, rejected_by_hbt_swap_not_applied = 0, rejected_by_no_objective_improvement = 0, rejected_by_force_verify_failed = 0;
         int visited_2d_nets = 0, visited_3d_nets = 0;
         int hbt_swap_force_accept_used = 0;
+        int hbt_insert_force_accept_used = 0;
+        int hbt_remove_force_accept_used = 0;
+        int inserted_hbt_count = 0, removed_hbt_count = 0, swapped_hbt_count = 0;
         int changed_hbt_id_count = 0, changed_hbt_count_total = 0;
         int hbt_count_before = 0, hbt_count_after = 0;
         int hbt_conflict_before = 0, hbt_conflict_after = 0;
@@ -98,6 +101,13 @@ public:
         RoutedPoint child_point{};
         std::vector<RoutedSegment> old_segments;
     };
+    struct CandidateEvaluation {
+        bool apply_ok=false, topology_ok=false, hbt_ok=false, delay_ready=false, hbt_change_ok=false;
+        double objective_before=0, objective_after=0, delay_before=0, delay_after=0, max_delay_before=0, max_delay_after=0, avg_delay_before=0, avg_delay_after=0;
+        double wirelength_before=0, wirelength_after=0, hbt_delay_before=0, hbt_delay_after=0;
+        int hbt_count_before=0, hbt_count_after=0;
+        std::string reject_reason;
+    };
     CriticalNetOptimizer(const RouterDB &db, const HybridGrid &grid, const PDTreeRouter &router, HBTResourceManager &hbt_manager, const Params &params);
     OptimizationStats optimize(std::vector<NetRouteResult> &results) const;
 
@@ -110,7 +120,8 @@ private:
     bool replaceSinkIncomingBranch(const Net &net, NetRouteResult &result, int sink_tree_node, int new_parent_tree_index, const std::vector<RoutedSegment> &new_segments, const RoutedPoint &sink_point) const;
     bool rebuildTreeStatistics(const Net &net, NetRouteResult &result) const;
     bool rollbackToSnapshot(NetRouteResult &result, const NetRouteResult &snapshot_result, HBTResourceManager &hbt_manager, const HBTResourceManager::Snapshot &snapshot) const;
-    bool applyRipupCandidate(const Net &net, NetRouteResult &result, const NetEditCandidate &cand, HBTResourceManager &hbt_manager, std::string &fail_reason) const;
+    bool applyCandidateToResult(const Net &net, NetRouteResult &result, const NetEditCandidate &cand, HBTResourceManager &hbt_manager, std::string &fail_reason) const;
+    CandidateEvaluation evaluateCandidate(const Net& net, const NetRouteResult& original, const NetEditCandidate& candidate) const;
     bool buildCrossDieBranchViaHBT(const RoutedPoint& parent_point, const RoutedPoint& sink_point, int hbt_id, std::vector<RoutedSegment>& out_segments, std::string& fail_reason) const;
     std::vector<int> collectHBTsOnPath(const NetRouteResult& result, int sink_tree_node) const;
     std::vector<int> collectAllUsedHBTsInNet(const NetRouteResult& result) const;
@@ -120,6 +131,10 @@ private:
     bool resultUsesHBT(const NetRouteResult& result) const;
     bool resultIsRoutedAs3D(const NetRouteResult& result, const Net* net) const;
     std::vector<NetEditCandidate> generateHBTSwapCandidates(const Net &net, const NetRouteResult &result, int sink_pin_index, int sink_tree_node, OptimizationStats *stats) const;
+    std::vector<NetEditCandidate> generateHBTInsertCandidates(const Net &net, const NetRouteResult &result, int sink_pin_index, int sink_tree_node, OptimizationStats *stats) const;
+    std::vector<NetEditCandidate> generateHBTRemoveCandidates(const Net &net, const NetRouteResult &result, int sink_pin_index, int sink_tree_node, OptimizationStats *stats) const;
+    bool verifyHBTInsertApplied(const NetRouteResult& result, int inserted_hbt_id, std::string& reason) const;
+    bool verifyHBTRemoveApplied(const NetRouteResult& result, int removed_hbt_id, std::string& reason) const;
     std::vector<NetEditCandidate> generateRipupOneSinkCandidates(const Net &net, const NetRouteResult &result, int sink_pin_index, int sink_tree_node, OptimizationStats *stats) const;
     double evaluatePostOptimizationObjective(const NetRouteResult &result, const Net &net) const;
     const RouterDB &db_;

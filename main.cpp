@@ -435,6 +435,12 @@ int main(int argc, char** argv)
     rr_proxy.changed_hbt_count_total = reroute_stats.changed_hbt_count_total;
     rr_proxy.hbt_count_before = reroute_stats.hbt_count_before;
     rr_proxy.hbt_count_after = reroute_stats.hbt_count_after;
+    rr_proxy.hbt_swap_force_accept_used = reroute_stats.hbt_swap_force_accept_used;
+    rr_proxy.hbt_insert_force_accept_used = reroute_stats.hbt_insert_force_accept_used;
+    rr_proxy.hbt_remove_force_accept_used = reroute_stats.hbt_remove_force_accept_used;
+    rr_proxy.inserted_hbt_count = reroute_stats.inserted_hbt_count;
+    rr_proxy.removed_hbt_count = reroute_stats.removed_hbt_count;
+    rr_proxy.swapped_hbt_count = reroute_stats.swapped_hbt_count;
     writeExperimentSummary(
         (output_dir / cfg.output.summary_report).string(),
         cfg,
