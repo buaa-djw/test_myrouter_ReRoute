@@ -101,7 +101,14 @@ void writeNetPlotData(const std::string& root_dir, const NetRouteResult& result)
     j["reroute_force_accepted"] = result.reroute_info.force_accepted;
     j["reroute_old_hbt_id"] = result.reroute_info.old_hbt_id;
     j["reroute_new_hbt_id"] = result.reroute_info.new_hbt_id;
+    j["reroute_inserted_hbt_id"] = result.reroute_info.inserted_hbt_id;
+    j["reroute_removed_hbt_id"] = result.reroute_info.removed_hbt_id;
+    j["reroute_old_hbt_ids"] = result.reroute_info.old_hbt_ids;
+    j["reroute_new_hbt_ids"] = result.reroute_info.new_hbt_ids;
+    j["reroute_inserted_hbt_ids"] = result.reroute_info.inserted_hbt_ids;
+    j["reroute_removed_hbt_ids"] = result.reroute_info.removed_hbt_ids;
     j["reroute_changed_hbt_id_count"] = result.reroute_info.changed_hbt_id_count;
+    j["reroute_changed_hbt_count_delta"] = result.reroute_info.changed_hbt_count_delta;
     j["points"] = json::array();
     j["segments"] = json::array();
 

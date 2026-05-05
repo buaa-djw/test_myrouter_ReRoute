@@ -1,0 +1,14 @@
+{
+  "experiment_name": "stage4_03_hbt_cross_layer_all_force",
+  "reroute": {
+    "enable": true,
+    "enable_hbt_insert": true,
+    "enable_hbt_remove": true,
+    "enable_hbt_swap": true,
+    "target_net_type": "all",
+    "debug_force_accept_hbt_insert": true,
+    "debug_force_accept_hbt_remove": true,
+    "debug_force_accept_hbt_swap": true,
+    "verbose": true
+  }
+}
