@@ -750,7 +750,8 @@ std::vector<CriticalNetOptimizer::NetEditCandidate> CriticalNetOptimizer::genera
             if (params_.verbose) std::cout << "[NetReRoute][HBT-SWAP][build] net=" << net.name << " old_hbt_id=" << old_id << " reason=same_die\n";
             continue;
         }
-        for (int new_id : collectCandidateHBTsForReroute(net, result, branch.parent_point, branch.child_point, old_id, params_.beam_width)) {
+        std::vector<std::pair<double, NetEditCandidate>> scored;
+        for (int new_id : collectCandidateHBTsForReroute(net, result, branch.parent_point, branch.child_point, old_id, params_.max_hbt_swap_candidates_per_branch)) {
             if (new_id == old_id) continue;
             if (stats) stats->tried_hbt_swap_candidates++;
             std::vector<RoutedSegment> segs; std::string fr;
@@ -766,8 +767,19 @@ std::vector<CriticalNetOptimizer::NetEditCandidate> CriticalNetOptimizer::genera
             c.old_hbt_id=old_id; c.new_hbt_id=new_id; c.old_hbt_ids={old_id}; c.new_hbt_ids={new_id};
             c.old_segments=branch.old_segments; c.new_segments=segs; c.child_attach_point=branch.child_point; c.has_child_attach_point=true;
             c.changed_hbt_id_count=1; c.changed_segment_count=(int)segs.size();
-            out.push_back(c);
-            if((int)out.size()>=params_.max_iterations_per_net) return out;
+            double old_wl=0,new_wl=0;
+            for (const auto& s: branch.old_segments) old_wl += std::abs(s.p1.x-s.p2.x)+std::abs(s.p1.y-s.p2.y);
+            for (const auto& s: segs) new_wl += std::abs(s.p1.x-s.p2.x)+std::abs(s.p1.y-s.p2.y);
+            c.predicted_wirelength_before = old_wl;
+            c.predicted_wirelength_after = new_wl;
+            c.predicted_gain = old_wl - new_wl;
+            if (c.predicted_gain <= params_.min_predicted_gain_for_hbt_swap && !params_.debug_force_accept_hbt_swap) continue;
+            scored.push_back({c.predicted_gain, c});
+        }
+        std::sort(scored.begin(), scored.end(), [](const auto& a, const auto& b){ return a.first > b.first; });
+        for (const auto& kv : scored) {
+            out.push_back(kv.second);
+            if ((int)out.size() >= params_.max_hbt_swap_candidates_per_branch) break;
         }
     }
     return out;
@@ -788,6 +800,7 @@ std::vector<CriticalNetOptimizer::NetEditCandidate> CriticalNetOptimizer::genera
             ((s.p1.x==pp.x&&s.p1.y==pp.y)||(s.p2.x==cp.x&&s.p2.y==cp.y))) return out;
     }
     auto ids = collectCandidateHBTsForReroute(net, result, pp, cp, -1, params_.max_hbt_insert_candidates_per_branch);
+    std::vector<std::pair<double, NetEditCandidate>> scored;
     for (int hid : ids) {
         std::vector<RoutedSegment> segs;
         std::string fr;
@@ -803,7 +816,17 @@ std::vector<CriticalNetOptimizer::NetEditCandidate> CriticalNetOptimizer::genera
         NetEditCandidate c; c.type=EditType::kInsertHBT; c.sink_pin_index=sink_pin_index; c.sink_tree_node=sink_tree_node;
         c.old_parent_tree_node=parent_idx; c.new_parent_tree_node=parent_idx; c.new_segments=segs; c.old_hbt_count=0; c.new_hbt_count=1;
         c.inserted_hbt_id=hid; c.inserted_hbt_ids={hid}; c.new_hbt_id=hid; c.new_hbt_ids={hid}; c.changed_hbt_count_delta=1; c.changed_hbt_id_count=1;
-        out.push_back(c);
+        double old_wl=0,new_wl=0;
+        for (int i=0;i<child.incoming_segment_count;++i){ const auto& s=result.segments[child.incoming_segment_begin+i]; old_wl+=std::abs(s.p1.x-s.p2.x)+std::abs(s.p1.y-s.p2.y);}
+        for (const auto& s: segs) new_wl += std::abs(s.p1.x-s.p2.x)+std::abs(s.p1.y-s.p2.y);
+        c.predicted_wirelength_before = old_wl; c.predicted_wirelength_after = new_wl; c.predicted_gain = old_wl - new_wl;
+        if (c.predicted_gain <= params_.min_predicted_gain_for_hbt_insert && !params_.debug_force_accept_hbt_insert) continue;
+        scored.push_back({c.predicted_gain, c});
+    }
+    std::sort(scored.begin(), scored.end(), [](const auto& a, const auto& b){ return a.first > b.first; });
+    for (const auto& kv : scored) {
+        out.push_back(kv.second);
+        if ((int)out.size() >= params_.max_hbt_insert_candidates_per_branch) break;
     }
     return out;
 }
@@ -822,6 +845,11 @@ std::vector<CriticalNetOptimizer::NetEditCandidate> CriticalNetOptimizer::genera
         NetEditCandidate c; c.type=EditType::kRemoveHBT; c.sink_pin_index=result.tree_nodes[ref.child_tree_node].pin_index; c.sink_tree_node=ref.child_tree_node;
         c.old_parent_tree_node=ref.parent_tree_node; c.new_parent_tree_node=ref.parent_tree_node; c.old_segments=ref.old_segments; c.new_segments=segs;
         c.removed_hbt_id=old_id; c.removed_hbt_ids={old_id}; c.old_hbt_id=old_id; c.old_hbt_ids={old_id}; c.changed_hbt_count_delta=-1; c.changed_hbt_id_count=1;
+        double old_wl=0,new_wl=0;
+        for (const auto& s: ref.old_segments) old_wl += std::abs(s.p1.x-s.p2.x)+std::abs(s.p1.y-s.p2.y);
+        for (const auto& s: segs) new_wl += std::abs(s.p1.x-s.p2.x)+std::abs(s.p1.y-s.p2.y);
+        c.predicted_wirelength_before = old_wl; c.predicted_wirelength_after = new_wl; c.predicted_gain = old_wl - new_wl;
+        if (c.predicted_gain <= params_.min_predicted_gain_for_hbt_remove && !params_.debug_force_accept_hbt_remove) continue;
         out.push_back(c);
         if ((int)out.size()>=params_.max_hbt_remove_candidates_per_branch) break;
     }

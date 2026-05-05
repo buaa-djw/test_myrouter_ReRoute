@@ -85,6 +85,11 @@ public:
         std::vector<int> inserted_hbt_ids, removed_hbt_ids;
         int old_hbt_id = -1, new_hbt_id = -1, inserted_hbt_id = -1, removed_hbt_id = -1;
         double old_objective = 0, new_objective = 0, old_max_delay = 0, new_max_delay = 0, old_avg_delay = 0, new_avg_delay = 0, old_wirelength = 0, new_wirelength = 0;
+        double predicted_wirelength_before = 0.0, predicted_wirelength_after = 0.0;
+        double predicted_delay_before = 0.0, predicted_delay_after = 0.0;
+        double predicted_hbt_delay_before = 0.0, predicted_hbt_delay_after = 0.0;
+        double predicted_objective_before = 0.0, predicted_objective_after = 0.0;
+        double predicted_gain = 0.0;
         int old_hbt_count = 0, new_hbt_count = 0;
         double old_hbt_delay_contrib = 0, new_hbt_delay_contrib = 0;
         int changed_hbt_id_count = 0, changed_hbt_count_delta = 0, changed_parent_count = 0, changed_segment_count = 0;
