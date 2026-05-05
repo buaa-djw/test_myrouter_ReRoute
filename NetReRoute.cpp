@@ -560,6 +560,45 @@ bool CriticalNetOptimizer::applyCandidateToResult(const Net &net, NetRouteResult
     return true;
 }
 
+CriticalNetOptimizer::CandidateEvaluation CriticalNetOptimizer::evaluateCandidate(
+    const Net& net, const NetRouteResult& original, const NetEditCandidate& candidate) const
+{
+    CandidateEvaluation ev;
+    ev.objective_before = evaluatePostOptimizationObjective(original, net);
+    ev.delay_before = original.delay_summary.max_sink_delay;
+    ev.max_delay_before = original.delay_summary.max_sink_delay;
+    ev.avg_delay_before = original.delay_summary.avg_sink_delay;
+    ev.hbt_delay_before = original.delay_summary.ed_hbt_delay_contrib;
+    const auto before_t = router_.evaluateTimingSummaryPublic(net, original);
+    ev.wirelength_before = before_t.total_wirelength;
+    ev.hbt_count_before = before_t.hbt_count;
+
+    NetRouteResult work = original;
+    auto hs = hbt_manager_.makeSnapshot();
+    std::string reason;
+    ev.apply_ok = applyCandidateToResult(net, work, candidate, hbt_manager_, reason);
+    if (!ev.apply_ok) { ev.reject_reason = reason.empty() ? "apply_failed" : reason; hbt_manager_.rollback(hs); return ev; }
+    ev.topology_ok = work.validation.valid;
+    ev.delay_ready = work.delay_summary.ready;
+    ev.objective_after = evaluatePostOptimizationObjective(work, net);
+    ev.delay_after = work.delay_summary.max_sink_delay;
+    ev.max_delay_after = work.delay_summary.max_sink_delay;
+    ev.avg_delay_after = work.delay_summary.avg_sink_delay;
+    ev.hbt_delay_after = work.delay_summary.ed_hbt_delay_contrib;
+    const auto after_t = router_.evaluateTimingSummaryPublic(net, work);
+    ev.wirelength_after = after_t.total_wirelength;
+    ev.hbt_count_after = after_t.hbt_count;
+    ev.hbt_ok = (hbt_manager_.collectStats().conflict_count == 0);
+    std::string vr;
+    if (candidate.type == EditType::kSwapHBT) ev.hbt_change_ok = verifyHBTSwapApplied(work, candidate.old_hbt_id, candidate.new_hbt_id, vr);
+    else if (candidate.type == EditType::kInsertHBT) ev.hbt_change_ok = verifyHBTInsertApplied(work, candidate.inserted_hbt_id, vr);
+    else if (candidate.type == EditType::kRemoveHBT) ev.hbt_change_ok = verifyHBTRemoveApplied(work, candidate.removed_hbt_id, vr);
+    else ev.hbt_change_ok = true;
+    if (!ev.hbt_change_ok) ev.reject_reason = vr;
+    hbt_manager_.rollback(hs);
+    return ev;
+}
+
 bool CriticalNetOptimizer::replaceSinkIncomingBranch(const Net &, NetRouteResult &result, int sink_tree_node, int new_parent_tree_index, const std::vector<RoutedSegment> &new_segments, const RoutedPoint &sink_point) const
 {
     auto &n = result.tree_nodes[sink_tree_node];
