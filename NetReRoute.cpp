@@ -189,30 +189,39 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
             rollbackToSnapshot(result, snap, hbt_manager_, hs);
             continue;
         }
-        bool force_ok = force_mode;
-        if (force_ok) {
-            if (!result.delay_summary.ready) force_ok = false;
-            if (force_ok && !result.validation.valid) force_ok = false;
-            if (force_ok && !hbt_ok) force_ok = false;
-            std::string vr; if (force_ok) force_ok = verifyHBTSwapApplied(result, c.old_hbt_id, c.new_hbt_id, vr);
+        bool force_ok = false;
+        if (force_mode) {
+            force_ok = true;
+            if (!result.validation.valid) force_ok = false;
+            if (force_ok && t.hbt_count > base_t.hbt_count) force_ok = false; // requires HBT conflict = 0
+            if (force_ok && !result.delay_summary.ready) force_ok = false; // EDCompute ready
+            std::string vr;
+            if (force_ok) force_ok = verifyHBTSwapApplied(result, c.old_hbt_id, c.new_hbt_id, vr);
+            if (force_ok && c.old_hbt_id == c.new_hbt_id) force_ok = false;
             if (!force_ok) {
-                stats.rejected_by_hbt_swap_not_applied++;
-                std::cout << "[NetReRoute][reject] net=" << net.name << " type=hbt_swap old_hbt=" << c.old_hbt_id
-                          << " new_hbt=" << c.new_hbt_id << " reason=not_applied obj_before=" << base_obj
-                          << " obj_after=" << obj << " wl_before=" << base_t.total_wirelength
-                          << " wl_after=" << t.total_wirelength << " delay_before=" << snap.delay_summary.max_sink_delay
-                          << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
+                stats.rejected_by_force_verify_failed++;
+                c.reject_reason = "force_verify_failed";
             }
         }
-        if (obj + 1e-12 < best_obj || force_ok)
+        if (force_ok)
         {
             found = true;
             best = result;
             best_obj = obj;
             bestc = c;
-            if (force_ok) {
-                stats.hbt_swap_force_accept_used = 1;
-            }
+            stats.hbt_swap_force_accept_used = 1;
+        }
+        else if (obj + 1e-12 < best_obj)
+        {
+            found = true;
+            best = result;
+            best_obj = obj;
+            bestc = c;
+        }
+        else
+        {
+            stats.rejected_by_no_objective_improvement++;
+            c.reject_reason = "no_objective_improvement";
         }
         rollbackToSnapshot(result, snap, hbt_manager_, hs);
     }
@@ -228,6 +237,7 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
     else if (bestc.type == EditType::kCrossDieRipupViaHBT) stats.accepted_cross_die_ripup_candidates++;
     else if (bestc.type == EditType::kInsertHBT) stats.accepted_hbt_insert_candidates++;
     else if (bestc.type == EditType::kRemoveHBT) stats.accepted_hbt_remove_candidates++;
+    stats.changed_hbt_id_count += bestc.changed_hbt_id_count;
     stats.improved_nets++;
 
     auto final_timing = router_.evaluateTimingSummaryPublic(net, result);
@@ -248,7 +258,7 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
     result.reroute_info.changed_segment_count = bestc.changed_segment_count;
     result.reroute_info.hbt_delay_before = base_t.hbt_delay;
     result.reroute_info.hbt_delay_after = final_timing.hbt_delay;
-    result.reroute_info.force_accepted = (bestc.type == EditType::kSwapHBT && params_.debug_force_accept_hbt_swap);
+    result.reroute_info.force_accepted = (bestc.type == EditType::kSwapHBT && params_.debug_force_accept_hbt_swap && stats.hbt_swap_force_accept_used == 1);
     result.reroute_info.reject_reason.clear();
     if (bestc.type == EditType::kSwapHBT) {
         const int force = (bestc.type == EditType::kSwapHBT && params_.debug_force_accept_hbt_swap) ? 1 : 0;
