@@ -22,11 +22,13 @@ std::vector<CriticalNetOptimizer::CriticalNetRecord> CriticalNetOptimizer::colle
         auto &rr = results[i];
         if (!rr.success || !rr.delay_summary.ready)
             continue;
-        if (params_.target_net_type == "3d_only" && !rr.is_3d)
-            continue;
-        if (params_.target_net_type == "2d_only" && rr.is_3d)
-            continue;
         auto it = m.find(rr.net_name);
+        const Net* net_ptr = (it == m.end()) ? nullptr : &db_.nets[it->second];
+        const bool routed_as_3d = resultIsRoutedAs3D(rr, net_ptr);
+        if (params_.target_net_type == "3d_only" && !routed_as_3d)
+            continue;
+        if (params_.target_net_type == "2d_only" && routed_as_3d)
+            continue;
         if (it == m.end())
             continue;
         r.push_back({i, it->second, rr.net_name, rr.delay_summary.avg_sink_delay, rr.delay_summary.max_sink_delay, rr.delay_summary.max_delay_pin_index});
@@ -48,7 +50,8 @@ CriticalNetOptimizer::OptimizationStats CriticalNetOptimizer::optimize(std::vect
         auto &rr = results[rec.result_index];
         const auto &net = db_.nets[rec.net_index];
         s.visited_nets++;
-        if (rr.is_3d) s.visited_3d_nets++; else s.visited_2d_nets++;
+        const bool routed_as_3d = resultIsRoutedAs3D(rr, &net);
+        if (routed_as_3d) s.visited_3d_nets++; else s.visited_2d_nets++;
         s.total_objective_before += evaluatePostOptimizationObjective(rr, net);
         optimizeOneNet(net, rr, s);
         s.total_objective_after += evaluatePostOptimizationObjective(rr, net);
@@ -136,6 +139,13 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
         }
         auto t = router_.evaluateTimingSummaryPublic(net, result);
         double obj = evaluatePostOptimizationObjective(result, net);
+        if (params_.verbose && c.type == EditType::kSwapHBT) {
+            std::cout << "[NetReRoute][HBT-SWAP][candidate] net=" << net.name << " old_hbt=" << c.old_hbt_id
+                      << " new_hbt=" << c.new_hbt_id << " old_wl=" << base_t.total_wirelength
+                      << " new_wl=" << t.total_wirelength << " old_delay=" << snap.delay_summary.max_sink_delay
+                      << " new_delay=" << result.delay_summary.max_sink_delay << " old_obj=" << base_obj
+                      << " new_obj=" << obj << "\n";
+        }
         bool wl_ok = t.total_wirelength <= base_t.total_wirelength * (1.0 + params_.max_wirelength_growth_ratio) + 1e-9;
         bool hbt_ok = t.hbt_count <= base_t.hbt_count + params_.max_extra_hbts;
         bool delay_ok = result.delay_summary.ready && result.delay_summary.max_sink_delay <= snap.delay_summary.max_sink_delay + 1e-12;
@@ -143,18 +153,39 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
         if (!wl_ok && !force_mode)
         {
             stats.rejected_by_wirelength++;
+            if (c.type == EditType::kSwapHBT) {
+                std::cout << "[NetReRoute][reject] net=" << net.name << " type=hbt_swap old_hbt=" << c.old_hbt_id
+                          << " new_hbt=" << c.new_hbt_id << " reason=wirelength obj_before=" << base_obj
+                          << " obj_after=" << obj << " wl_before=" << base_t.total_wirelength
+                          << " wl_after=" << t.total_wirelength << " delay_before=" << snap.delay_summary.max_sink_delay
+                          << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
+            }
             rollbackToSnapshot(result, snap, hbt_manager_, hs);
             continue;
         }
         if (!hbt_ok && !force_mode)
         {
             stats.rejected_by_hbt_conflict++;
+            if (c.type == EditType::kSwapHBT) {
+                std::cout << "[NetReRoute][reject] net=" << net.name << " type=hbt_swap old_hbt=" << c.old_hbt_id
+                          << " new_hbt=" << c.new_hbt_id << " reason=hbt_conflict obj_before=" << base_obj
+                          << " obj_after=" << obj << " wl_before=" << base_t.total_wirelength
+                          << " wl_after=" << t.total_wirelength << " delay_before=" << snap.delay_summary.max_sink_delay
+                          << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
+            }
             rollbackToSnapshot(result, snap, hbt_manager_, hs);
             continue;
         }
         if (!delay_ok && !force_mode)
         {
             stats.rejected_by_delay++;
+            if (c.type == EditType::kSwapHBT) {
+                std::cout << "[NetReRoute][reject] net=" << net.name << " type=hbt_swap old_hbt=" << c.old_hbt_id
+                          << " new_hbt=" << c.new_hbt_id << " reason=delay obj_before=" << base_obj
+                          << " obj_after=" << obj << " wl_before=" << base_t.total_wirelength
+                          << " wl_after=" << t.total_wirelength << " delay_before=" << snap.delay_summary.max_sink_delay
+                          << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
+            }
             rollbackToSnapshot(result, snap, hbt_manager_, hs);
             continue;
         }
@@ -164,7 +195,14 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
             if (force_ok && !result.validation.valid) force_ok = false;
             if (force_ok && !hbt_ok) force_ok = false;
             std::string vr; if (force_ok) force_ok = verifyHBTSwapApplied(result, c.old_hbt_id, c.new_hbt_id, vr);
-            if (!force_ok && stats) stats->rejected_by_hbt_swap_not_applied++;
+            if (!force_ok) {
+                stats.rejected_by_hbt_swap_not_applied++;
+                std::cout << "[NetReRoute][reject] net=" << net.name << " type=hbt_swap old_hbt=" << c.old_hbt_id
+                          << " new_hbt=" << c.new_hbt_id << " reason=not_applied obj_before=" << base_obj
+                          << " obj_after=" << obj << " wl_before=" << base_t.total_wirelength
+                          << " wl_after=" << t.total_wirelength << " delay_before=" << snap.delay_summary.max_sink_delay
+                          << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
+            }
         }
         if (obj + 1e-12 < best_obj || force_ok)
         {
@@ -194,7 +232,7 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
 
     auto final_timing = router_.evaluateTimingSummaryPublic(net, result);
     result.reroute_info.touched = true;
-    result.reroute_info.improved = true;
+    result.reroute_info.improved = (best_obj + 1e-12 < base_obj);
     result.reroute_info.edit_type = (bestc.type == EditType::kRipupOneSinkBranch) ? "ripup_one_sink" : (bestc.type == EditType::kSwapHBT ? "hbt_swap" : "reattach_same_die");
     result.reroute_info.delay_before = base_max_delay;
     result.reroute_info.delay_after = result.delay_summary.max_sink_delay;
@@ -208,10 +246,16 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
     result.reroute_info.new_hbt_id = bestc.new_hbt_id;
     result.reroute_info.changed_hbt_id_count = bestc.changed_hbt_id_count;
     result.reroute_info.changed_segment_count = bestc.changed_segment_count;
+    result.reroute_info.hbt_delay_before = base_t.hbt_delay;
+    result.reroute_info.hbt_delay_after = final_timing.hbt_delay;
     result.reroute_info.force_accepted = (bestc.type == EditType::kSwapHBT && params_.debug_force_accept_hbt_swap);
     result.reroute_info.reject_reason.clear();
-    if (bestc.type == EditType::kSwapHBT && params_.verbose) {
-        std::cout << "[NetReRoute][HBT-SWAP][accepted] net=" << net.name << " old_hbt_id=" << bestc.old_hbt_id << " new_hbt_id=" << bestc.new_hbt_id << "\n";
+    if (bestc.type == EditType::kSwapHBT) {
+        const int force = (bestc.type == EditType::kSwapHBT && params_.debug_force_accept_hbt_swap) ? 1 : 0;
+        std::cout << "[NetReRoute][accept] net=" << net.name << " type=hbt_swap old_hbt=" << bestc.old_hbt_id
+                  << " new_hbt=" << bestc.new_hbt_id << " force=" << force << " obj_before=" << base_obj
+                  << " obj_after=" << best_obj << " delay_before=" << base_max_delay
+                  << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
     }
     return true;
 }
@@ -440,6 +484,20 @@ bool CriticalNetOptimizer::verifyHBTSwapApplied(const NetRouteResult& result, in
     return true;
 }
 
+bool CriticalNetOptimizer::resultUsesHBT(const NetRouteResult& result) const {
+    for (const auto& seg : result.segments) {
+        if (seg.uses_hbt && seg.hbt_id >= 0) return true;
+    }
+    for (const auto& node : result.tree_nodes) {
+        if (node.assigned_hbt_id >= 0 || node.incoming_hbt_count > 0) return true;
+    }
+    return false;
+}
+
+bool CriticalNetOptimizer::resultIsRoutedAs3D(const NetRouteResult& result, const Net* net) const {
+    return result.is_3d || (net != nullptr && net->is_3d) || resultUsesHBT(result);
+}
+
 bool CriticalNetOptimizer::findBranchByHBTId(const NetRouteResult& result, int old_hbt_id, HBTBranchRef& out_ref) const {
     for (int child = 0; child < (int)result.tree_nodes.size(); ++child) {
         const auto& tn = result.tree_nodes[child];
@@ -464,7 +522,7 @@ bool CriticalNetOptimizer::findBranchByHBTId(const NetRouteResult& result, int o
 
 std::vector<CriticalNetOptimizer::NetEditCandidate> CriticalNetOptimizer::generateHBTSwapCandidates(const Net &net, const NetRouteResult &result, int sink_pin_index, int sink_tree_node, OptimizationStats *stats) const {
     std::vector<NetEditCandidate> out;
-    if (!result.is_3d) { if (stats) stats->rejected_by_non_3d_net++; if(params_.verbose) std::cout<<"[NetReRoute][HBT-SWAP][skip] net="<<net.name<<" reason=non_3d\n"; return out; }
+    if (!resultIsRoutedAs3D(result, &net)) { if (stats) stats->rejected_by_non_3d_net++; if(params_.verbose) std::cout<<"[NetReRoute][HBT-SWAP][skip] net="<<net.name<<" reason=non_3d\n"; return out; }
     auto path_hbts = collectHBTsOnPath(result, sink_tree_node); auto all_hbts = collectAllUsedHBTsInNet(result);
     std::vector<int> old_hbts=path_hbts; old_hbts.insert(old_hbts.end(), all_hbts.begin(), all_hbts.end()); std::sort(old_hbts.begin(), old_hbts.end()); old_hbts.erase(std::unique(old_hbts.begin(), old_hbts.end()), old_hbts.end());
     if(params_.verbose) std::cout<<"[NetReRoute][HBT-SWAP][scan] net="<<net.name<<" path_hbts="<<path_hbts.size()<<" all_hbts="<<all_hbts.size()<<"\n";
