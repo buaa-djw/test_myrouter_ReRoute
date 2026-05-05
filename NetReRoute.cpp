@@ -171,31 +171,15 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
             (c.type == EditType::kSwapHBT && params_.debug_force_accept_hbt_swap) ||
             (c.type == EditType::kInsertHBT && params_.debug_force_accept_hbt_insert) ||
             (c.type == EditType::kRemoveHBT && params_.debug_force_accept_hbt_remove);
-        const NetRouteResult snap = result;
-        const auto hbt_snapshot = hbt_manager_.makeSnapshot();
-        std::string fail_reason;
-
-        if (!applyCandidateToResult(net, result, c, hbt_manager_, fail_reason)) {
-            c.reject_reason = fail_reason.empty() ? "apply_failed" : fail_reason;
-            if (force_mode) {
-                stats.rejected_by_force_verify_failed++;
-            } else if (fail_reason == "invalid_topology") {
-                stats.rejected_by_topology++;
-            } else if (fail_reason == "hbt_reserve_conflict") {
-                stats.rejected_by_hbt_conflict++;
-            }
-            if (params_.verbose && c.type == EditType::kSwapHBT) {
-                std::cout << "[NetReRoute][reject] net=" << net.name
-                          << " type=hbt_swap old_hbt=" << c.old_hbt_id
-                          << " new_hbt=" << c.new_hbt_id
-                          << " reason=" << c.reject_reason << "\n";
-            }
-            rollbackToSnapshot(result, snap, hbt_manager_, hbt_snapshot);
+        const CandidateEvaluation ev = evaluateCandidate(net, result, c);
+        const double cand_obj = ev.objective_after;
+        if (!ev.apply_ok) {
+            c.reject_reason = ev.reject_reason;
+            if (force_mode) stats.rejected_by_force_verify_failed++;
+            else if (ev.reject_reason == "invalid_topology") stats.rejected_by_topology++;
+            else if (ev.reject_reason == "hbt_reserve_conflict") stats.rejected_by_hbt_conflict++;
             continue;
         }
-
-        const auto cand_timing = router_.evaluateTimingSummaryPublic(net, result);
-        const double cand_obj = evaluatePostOptimizationObjective(result, net);
 
         if (params_.verbose && c.type == EditType::kSwapHBT) {
             std::cout << "[NetReRoute][HBT-SWAP][candidate] net=" << net.name
@@ -210,23 +194,8 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
         }
 
         if (force_mode) {
-            bool force_ok = true;
-            std::string verify_reason;
-            if (!result.delay_summary.ready) {
-                force_ok = false;
-                verify_reason = "delay_not_ready";
-            }
-            if (force_ok && !result.validation.valid) {
-                force_ok = false;
-                verify_reason = "invalid_topology";
-            }
-            if (force_ok && c.old_hbt_id == c.new_hbt_id) {
-                force_ok = false;
-                verify_reason = "same_hbt_id";
-            }
-            if (force_ok && !verifyHBTSwapApplied(result, c.old_hbt_id, c.new_hbt_id, verify_reason)) {
-                force_ok = false;
-            }
+            bool force_ok = ev.apply_ok && ev.topology_ok && ev.hbt_ok && ev.delay_ready && ev.hbt_change_ok;
+            std::string verify_reason = ev.reject_reason.empty() ? "force_verify_failed" : ev.reject_reason;
 
             if (force_ok) {
                 found = true;
@@ -246,7 +215,6 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
                               << " delay_before=" << base_max_delay
                               << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
                 }
-                rollbackToSnapshot(result, snap, hbt_manager_, hbt_snapshot);
                 break;
             }
 
@@ -263,20 +231,17 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
                           << " reason=" << verify_reason
                           << " obj_before=" << base_obj
                           << " obj_after=" << cand_obj
-                          << " wl_before=" << base_t.total_wirelength
-                          << " wl_after=" << cand_timing.total_wirelength
+                          << " wl_before=" << ev.wirelength_before
+                          << " wl_after=" << ev.wirelength_after
                           << " delay_before=" << base_max_delay
-                          << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
+                          << " delay_after=" << ev.max_delay_after << "\n";
             }
-            rollbackToSnapshot(result, snap, hbt_manager_, hbt_snapshot);
             continue;
         }
 
-        const bool wl_ok = cand_timing.total_wirelength <=
-            base_t.total_wirelength * (1.0 + params_.max_wirelength_growth_ratio) + 1e-9;
-        const bool hbt_ok = cand_timing.hbt_count <= base_t.hbt_count + params_.max_extra_hbts;
-        const bool delay_ok = result.delay_summary.ready &&
-            result.delay_summary.max_sink_delay <= snap.delay_summary.max_sink_delay + 1e-12;
+        const bool wl_ok = ev.wirelength_after <= ev.wirelength_before * (1.0 + params_.max_wirelength_growth_ratio) + 1e-9;
+        const bool hbt_ok = ev.hbt_count_after <= ev.hbt_count_before + params_.max_extra_hbts;
+        const bool delay_ok = ev.delay_ready && ev.max_delay_after <= ev.max_delay_before + 1e-12;
 
         if (!wl_ok) {
             stats.rejected_by_wirelength++;
@@ -286,12 +251,11 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
                           << " new_hbt=" << c.new_hbt_id
                           << " reason=wirelength obj_before=" << base_obj
                           << " obj_after=" << cand_obj
-                          << " wl_before=" << base_t.total_wirelength
-                          << " wl_after=" << cand_timing.total_wirelength
+                          << " wl_before=" << ev.wirelength_before
+                          << " wl_after=" << ev.wirelength_after
                           << " delay_before=" << base_max_delay
-                          << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
+                          << " delay_after=" << ev.max_delay_after << "\n";
             }
-            rollbackToSnapshot(result, snap, hbt_manager_, hbt_snapshot);
             continue;
         }
         if (!hbt_ok) {
@@ -303,7 +267,6 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
                           << " reason=hbt_count obj_before=" << base_obj
                           << " obj_after=" << cand_obj << "\n";
             }
-            rollbackToSnapshot(result, snap, hbt_manager_, hbt_snapshot);
             continue;
         }
         if (!delay_ok) {
@@ -314,12 +277,11 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
                           << " new_hbt=" << c.new_hbt_id
                           << " reason=delay obj_before=" << base_obj
                           << " obj_after=" << cand_obj
-                          << " wl_before=" << base_t.total_wirelength
-                          << " wl_after=" << cand_timing.total_wirelength
+                          << " wl_before=" << ev.wirelength_before
+                          << " wl_after=" << ev.wirelength_after
                           << " delay_before=" << base_max_delay
-                          << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
+                          << " delay_after=" << ev.max_delay_after << "\n";
             }
-            rollbackToSnapshot(result, snap, hbt_manager_, hbt_snapshot);
             continue;
         }
         if (!(cand_obj + 1e-12 < best_obj)) {
@@ -331,7 +293,6 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
                           << " reason=no_objective_improvement obj_before=" << best_obj
                           << " obj_after=" << cand_obj << "\n";
             }
-            rollbackToSnapshot(result, snap, hbt_manager_, hbt_snapshot);
             continue;
         }
 
@@ -340,7 +301,6 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
         bestc = c;
         best_obj = cand_obj;
         best_force_accepted = false;
-        rollbackToSnapshot(result, snap, hbt_manager_, hbt_snapshot);
     }
 
     if (!found) {
