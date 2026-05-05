@@ -418,6 +418,8 @@ int main(int argc, char** argv)
     rr_proxy.accepted_hbt_remove_candidates = reroute_stats.accepted_hbt_remove_candidates;
     rr_proxy.rejected_by_no_free_hbt = reroute_stats.rejected_by_no_free_hbt;
     rr_proxy.rejected_by_no_hbt_on_path = reroute_stats.rejected_by_no_hbt_on_path;
+    rr_proxy.rejected_by_no_objective_improvement = reroute_stats.rejected_by_no_objective_improvement;
+    rr_proxy.rejected_by_force_verify_failed = reroute_stats.rejected_by_force_verify_failed;
     rr_proxy.changed_hbt_id_count = reroute_stats.changed_hbt_id_count;
     rr_proxy.changed_hbt_count_total = reroute_stats.changed_hbt_count_total;
     rr_proxy.hbt_count_before = reroute_stats.hbt_count_before;

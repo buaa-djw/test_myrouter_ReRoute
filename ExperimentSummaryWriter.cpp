@@ -142,6 +142,8 @@ void writeExperimentSummary(const std::string& path,
         o << "rejected_by_non_3d_net=" << reroute_stats->rejected_by_non_3d_net << "\n";
         o << "rejected_by_build_hbt_branch_failed=" << reroute_stats->rejected_by_build_hbt_branch_failed << "\n";
         o << "rejected_by_hbt_swap_not_applied=" << reroute_stats->rejected_by_hbt_swap_not_applied << "\n";
+        o << "rejected_by_no_objective_improvement=" << reroute_stats->rejected_by_no_objective_improvement << "\n";
+        o << "rejected_by_force_verify_failed=" << reroute_stats->rejected_by_force_verify_failed << "\n";
         o << "changed_hbt_id_count=" << reroute_stats->changed_hbt_id_count << "\n";
         o << "changed_hbt_count_total=" << reroute_stats->changed_hbt_count_total << "\n";
         o << "hbt_count_before=" << reroute_stats->hbt_count_before << "\n";

@@ -36,7 +36,7 @@ public:
         int tried_reattach_candidates = 0, tried_ripup_candidates = 0, accepted_reattach_candidates = 0, accepted_ripup_candidates = 0, rejected_by_cycle = 0, rejected_by_cross_die_not_supported = 0, rejected_by_invalid_hbt = 0;
         int tried_hbt_swap_candidates = 0, accepted_hbt_swap_candidates = 0, tried_cross_die_ripup_candidates = 0, accepted_cross_die_ripup_candidates = 0;
         int tried_hbt_insert_candidates = 0, accepted_hbt_insert_candidates = 0, tried_hbt_remove_candidates = 0, accepted_hbt_remove_candidates = 0;
-        int rejected_by_no_free_hbt = 0, rejected_by_no_hbt_on_path = 0, rejected_by_non_3d_net = 0, rejected_by_build_hbt_branch_failed = 0, rejected_by_hbt_swap_not_applied = 0;
+        int rejected_by_no_free_hbt = 0, rejected_by_no_hbt_on_path = 0, rejected_by_non_3d_net = 0, rejected_by_build_hbt_branch_failed = 0, rejected_by_hbt_swap_not_applied = 0, rejected_by_no_objective_improvement = 0, rejected_by_force_verify_failed = 0;
         int visited_2d_nets = 0, visited_3d_nets = 0;
         int hbt_swap_force_accept_used = 0;
         int changed_hbt_id_count = 0, changed_hbt_count_total = 0;
