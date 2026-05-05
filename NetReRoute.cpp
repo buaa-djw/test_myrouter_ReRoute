@@ -75,38 +75,44 @@ CriticalNetOptimizer::OptimizationStats CriticalNetOptimizer::optimize(std::vect
 
 bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result, OptimizationStats &stats) const
 {
-    if (!result.success || !result.delay_summary.ready || result.delay_summary.single_pin_net)
+    if (!result.success || !result.delay_summary.ready || result.delay_summary.single_pin_net) {
         return false;
-    int sink_pin = result.delay_summary.max_delay_pin_index;
-    int sink_tree = findTreeNodeForPin(result, sink_pin);
-    if (sink_tree < 0 || sink_tree == result.root_tree_index)
+    }
+
+    const int sink_pin = result.delay_summary.max_delay_pin_index;
+    const int sink_tree = findTreeNodeForPin(result, sink_pin);
+    if (sink_tree < 0 || sink_tree == result.root_tree_index) {
         return false;
-    double base_obj = evaluatePostOptimizationObjective(result, net);
+    }
+
+    const double base_obj = evaluatePostOptimizationObjective(result, net);
     const double base_max_delay = result.delay_summary.max_sink_delay;
-    auto base_t = router_.evaluateTimingSummaryPublic(net, result);
     const double base_hbt_delay = result.delay_summary.ed_hbt_delay_contrib;
+    const auto base_t = router_.evaluateTimingSummaryPublic(net, result);
+
     std::vector<NetEditCandidate> cands;
-    if (params_.enable_reattach)
-    {
-        for (int p : router_.collectCandidateParentsPublic(net, result, net.pins[sink_pin]))
-        {
-            if ((int)cands.size() >= params_.max_iterations_per_net)
+
+    if (params_.enable_reattach) {
+        for (int p : router_.collectCandidateParentsPublic(net, result, net.pins[sink_pin])) {
+            if (static_cast<int>(cands.size()) >= params_.max_iterations_per_net) {
                 break;
-            if (p == sink_tree || wouldCreateCycle(result, p, sink_tree))
-            {
+            }
+            if (p == sink_tree || wouldCreateCycle(result, p, sink_tree)) {
                 stats.rejected_by_cycle++;
                 continue;
             }
+
             std::vector<RoutedSegment> segs;
-            auto pp = result.tree_nodes[p].point;
-            auto sp = router_.pinToPointPublic(net.pins[sink_pin]);
-            if (normalizeDieLocal(pp.die) != normalizeDieLocal(sp.die))
-            {
+            const RoutedPoint parent_point = result.tree_nodes[p].point;
+            const RoutedPoint sink_point = router_.pinToPointPublic(net.pins[sink_pin]);
+            if (normalizeDieLocal(parent_point.die) != normalizeDieLocal(sink_point.die)) {
                 stats.rejected_by_cross_die_not_supported++;
                 continue;
             }
-            if (!router_.build2DConnectionPublic(pp, sp, segs))
+            if (!router_.build2DConnectionPublic(parent_point, sink_point, segs)) {
                 continue;
+            }
+
             NetEditCandidate c;
             c.type = EditType::kReattachSinkSameDie;
             c.sink_pin_index = sink_pin;
@@ -117,141 +123,273 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
             cands.push_back(c);
         }
     }
-    if (params_.enable_ripup)
-    {
-        auto rs = generateRipupOneSinkCandidates(net, result, sink_pin, sink_tree, &stats);
-        cands.insert(cands.end(), rs.begin(), rs.end());
+
+    if (params_.enable_ripup) {
+        auto ripup_candidates = generateRipupOneSinkCandidates(net, result, sink_pin, sink_tree, &stats);
+        cands.insert(cands.end(), ripup_candidates.begin(), ripup_candidates.end());
     }
-    if (params_.enable_hbt_swap)
-    {
-        auto hs = generateHBTSwapCandidates(net, result, sink_pin, sink_tree, &stats);
-        cands.insert(cands.end(), hs.begin(), hs.end());
+
+    if (params_.enable_hbt_swap) {
+        auto hbt_candidates = generateHBTSwapCandidates(net, result, sink_pin, sink_tree, &stats);
+        cands.insert(cands.end(), hbt_candidates.begin(), hbt_candidates.end());
     }
-    if (cands.empty())
+
+    if (cands.empty()) {
         return false;
-    NetRouteResult best = result;
-    bool found = false;
+    }
+
+    NetRouteResult best_result = result;
     NetEditCandidate bestc;
     double best_obj = base_obj;
-    for (auto &c : cands)
-    {
-        stats.tried_candidates++;
-        if (c.type == EditType::kRipupOneSinkBranch) stats.tried_ripup_candidates++;
-        else if (c.type == EditType::kReattachSinkSameDie) stats.tried_reattach_candidates++;
+    bool found = false;
+    bool best_force_accepted = false;
 
-        else if (c.type == EditType::kCrossDieRipupViaHBT) stats.tried_cross_die_ripup_candidates++;
-        else if (c.type == EditType::kInsertHBT) stats.tried_hbt_insert_candidates++;
-        else if (c.type == EditType::kRemoveHBT) stats.tried_hbt_remove_candidates++;
-        auto snap = result;
-        auto hs = hbt_manager_.makeSnapshot();
-        std::string fr;
-        if (!applyRipupCandidate(net, result, c, hbt_manager_, fr))
-        {
-            c.reject_reason = fr;
-            rollbackToSnapshot(result, snap, hbt_manager_, hs);
+    for (auto &c : cands) {
+        stats.tried_candidates++;
+        if (c.type == EditType::kRipupOneSinkBranch) {
+            stats.tried_ripup_candidates++;
+        } else if (c.type == EditType::kReattachSinkSameDie) {
+            stats.tried_reattach_candidates++;
+        } else if (c.type == EditType::kCrossDieRipupViaHBT) {
+            stats.tried_cross_die_ripup_candidates++;
+        } else if (c.type == EditType::kInsertHBT) {
+            stats.tried_hbt_insert_candidates++;
+        } else if (c.type == EditType::kRemoveHBT) {
+            stats.tried_hbt_remove_candidates++;
+        }
+
+        const bool force_mode = (c.type == EditType::kSwapHBT && params_.debug_force_accept_hbt_swap);
+        const NetRouteResult snap = result;
+        const auto hbt_snapshot = hbt_manager_.makeSnapshot();
+        std::string fail_reason;
+
+        if (!applyRipupCandidate(net, result, c, hbt_manager_, fail_reason)) {
+            c.reject_reason = fail_reason.empty() ? "apply_failed" : fail_reason;
+            if (force_mode) {
+                stats.rejected_by_force_verify_failed++;
+            } else if (fail_reason == "invalid_topology") {
+                stats.rejected_by_topology++;
+            } else if (fail_reason == "hbt_reserve_conflict") {
+                stats.rejected_by_hbt_conflict++;
+            }
+            if (params_.verbose && c.type == EditType::kSwapHBT) {
+                std::cout << "[NetReRoute][reject] net=" << net.name
+                          << " type=hbt_swap old_hbt=" << c.old_hbt_id
+                          << " new_hbt=" << c.new_hbt_id
+                          << " reason=" << c.reject_reason << "\n";
+            }
+            rollbackToSnapshot(result, snap, hbt_manager_, hbt_snapshot);
             continue;
         }
-        auto t = router_.evaluateTimingSummaryPublic(net, result);
-        double obj = evaluatePostOptimizationObjective(result, net);
+
+        const auto cand_timing = router_.evaluateTimingSummaryPublic(net, result);
+        const double cand_obj = evaluatePostOptimizationObjective(result, net);
+
         if (params_.verbose && c.type == EditType::kSwapHBT) {
-            std::cout << "[NetReRoute][HBT-SWAP][candidate] net=" << net.name << " old_hbt=" << c.old_hbt_id
-                      << " new_hbt=" << c.new_hbt_id << " old_wl=" << base_t.total_wirelength
-                      << " new_wl=" << t.total_wirelength << " old_delay=" << snap.delay_summary.max_sink_delay
-                      << " new_delay=" << result.delay_summary.max_sink_delay << " old_obj=" << base_obj
-                      << " new_obj=" << obj << "\n";
+            std::cout << "[NetReRoute][HBT-SWAP][candidate] net=" << net.name
+                      << " old_hbt=" << c.old_hbt_id
+                      << " new_hbt=" << c.new_hbt_id
+                      << " old_wl=" << base_t.total_wirelength
+                      << " new_wl=" << cand_timing.total_wirelength
+                      << " old_delay=" << snap.delay_summary.max_sink_delay
+                      << " new_delay=" << result.delay_summary.max_sink_delay
+                      << " old_obj=" << base_obj
+                      << " new_obj=" << cand_obj << "\n";
         }
-        bool wl_ok = t.total_wirelength <= base_t.total_wirelength * (1.0 + params_.max_wirelength_growth_ratio) + 1e-9;
-        bool hbt_ok = t.hbt_count <= base_t.hbt_count + params_.max_extra_hbts;
-        bool delay_ok = result.delay_summary.ready && result.delay_summary.max_sink_delay <= snap.delay_summary.max_sink_delay + 1e-12;
-        bool force_mode = (c.type == EditType::kSwapHBT && params_.debug_force_accept_hbt_swap);
-        if (!wl_ok && !force_mode)
-        {
-            stats.rejected_by_wirelength++;
-            if (c.type == EditType::kSwapHBT) {
-                std::cout << "[NetReRoute][reject] net=" << net.name << " type=hbt_swap old_hbt=" << c.old_hbt_id
-                          << " new_hbt=" << c.new_hbt_id << " reason=wirelength obj_before=" << base_obj
-                          << " obj_after=" << obj << " wl_before=" << base_t.total_wirelength
-                          << " wl_after=" << t.total_wirelength << " delay_before=" << snap.delay_summary.max_sink_delay
-                          << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
+
+        if (force_mode) {
+            bool force_ok = true;
+            std::string verify_reason;
+            if (!result.delay_summary.ready) {
+                force_ok = false;
+                verify_reason = "delay_not_ready";
             }
-            rollbackToSnapshot(result, snap, hbt_manager_, hs);
-            continue;
-        }
-        if (!hbt_ok && !force_mode)
-        {
-            stats.rejected_by_hbt_conflict++;
-            if (c.type == EditType::kSwapHBT) {
-                std::cout << "[NetReRoute][reject] net=" << net.name << " type=hbt_swap old_hbt=" << c.old_hbt_id
-                          << " new_hbt=" << c.new_hbt_id << " reason=hbt_conflict obj_before=" << base_obj
-                          << " obj_after=" << obj << " wl_before=" << base_t.total_wirelength
-                          << " wl_after=" << t.total_wirelength << " delay_before=" << snap.delay_summary.max_sink_delay
-                          << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
+            if (force_ok && !result.validation.valid) {
+                force_ok = false;
+                verify_reason = "invalid_topology";
             }
-            rollbackToSnapshot(result, snap, hbt_manager_, hs);
-            continue;
-        }
-        if (!delay_ok && !force_mode)
-        {
-            stats.rejected_by_delay++;
-            if (c.type == EditType::kSwapHBT) {
-                std::cout << "[NetReRoute][reject] net=" << net.name << " type=hbt_swap old_hbt=" << c.old_hbt_id
-                          << " new_hbt=" << c.new_hbt_id << " reason=delay obj_before=" << base_obj
-                          << " obj_after=" << obj << " wl_before=" << base_t.total_wirelength
-                          << " wl_after=" << t.total_wirelength << " delay_before=" << snap.delay_summary.max_sink_delay
-                          << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
+            if (force_ok && c.old_hbt_id == c.new_hbt_id) {
+                force_ok = false;
+                verify_reason = "same_hbt_id";
             }
-            rollbackToSnapshot(result, snap, hbt_manager_, hs);
-            continue;
-        }
-        bool force_ok = force_mode;
-        if (force_ok) {
-            if (!result.delay_summary.ready) force_ok = false;
-            if (force_ok && !result.validation.valid) force_ok = false;
-            // In Stage 3A force-accept mode, do not reject by delay, wirelength, or
-            // HBT-count objective. HBT resource conflicts are already checked by
-            // HBTResourceManager::reserve() in applyRipupCandidate().
-            std::string vr; if (force_ok) force_ok = verifyHBTSwapApplied(result, c.old_hbt_id, c.new_hbt_id, vr);
-            if (!force_ok) {
-                stats.rejected_by_hbt_swap_not_applied++;
-                std::cout << "[NetReRoute][reject] net=" << net.name << " type=hbt_swap old_hbt=" << c.old_hbt_id
-                          << " new_hbt=" << c.new_hbt_id << " reason=not_applied obj_before=" << base_obj
-                          << " obj_after=" << obj << " wl_before=" << base_t.total_wirelength
-                          << " wl_after=" << t.total_wirelength << " delay_before=" << snap.delay_summary.max_sink_delay
-                          << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
+            if (force_ok && !verifyHBTSwapApplied(result, c.old_hbt_id, c.new_hbt_id, verify_reason)) {
+                force_ok = false;
             }
-        }
-        if (obj + 1e-12 < best_obj || force_ok)
-        {
-            found = true;
-            best = result;
-            best_obj = obj;
-            bestc = c;
+
             if (force_ok) {
+                found = true;
+                best_result = result;
+                bestc = c;
+                best_obj = cand_obj;
+                best_force_accepted = true;
                 stats.hbt_swap_force_accept_used = 1;
+                if (params_.verbose) {
+                    std::cout << "[NetReRoute][accept-candidate] net=" << net.name
+                              << " type=hbt_swap old_hbt=" << c.old_hbt_id
+                              << " new_hbt=" << c.new_hbt_id
+                              << " force=1 obj_before=" << base_obj
+                              << " obj_after=" << cand_obj
+                              << " delay_before=" << base_max_delay
+                              << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
+                }
+                rollbackToSnapshot(result, snap, hbt_manager_, hbt_snapshot);
+                break;
             }
+
+            stats.rejected_by_force_verify_failed++;
+            if (verify_reason == "hbt_swap_not_reflected_in_topology") {
+                stats.rejected_by_hbt_swap_not_applied++;
+            } else if (verify_reason == "invalid_topology") {
+                stats.rejected_by_topology++;
+            }
+            if (params_.verbose) {
+                std::cout << "[NetReRoute][reject] net=" << net.name
+                          << " type=hbt_swap old_hbt=" << c.old_hbt_id
+                          << " new_hbt=" << c.new_hbt_id
+                          << " reason=" << verify_reason
+                          << " obj_before=" << base_obj
+                          << " obj_after=" << cand_obj
+                          << " wl_before=" << base_t.total_wirelength
+                          << " wl_after=" << cand_timing.total_wirelength
+                          << " delay_before=" << base_max_delay
+                          << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
+            }
+            rollbackToSnapshot(result, snap, hbt_manager_, hbt_snapshot);
+            continue;
         }
-        rollbackToSnapshot(result, snap, hbt_manager_, hs);
+
+        const bool wl_ok = cand_timing.total_wirelength <=
+            base_t.total_wirelength * (1.0 + params_.max_wirelength_growth_ratio) + 1e-9;
+        const bool hbt_ok = cand_timing.hbt_count <= base_t.hbt_count + params_.max_extra_hbts;
+        const bool delay_ok = result.delay_summary.ready &&
+            result.delay_summary.max_sink_delay <= snap.delay_summary.max_sink_delay + 1e-12;
+
+        if (!wl_ok) {
+            stats.rejected_by_wirelength++;
+            if (params_.verbose && c.type == EditType::kSwapHBT) {
+                std::cout << "[NetReRoute][reject] net=" << net.name
+                          << " type=hbt_swap old_hbt=" << c.old_hbt_id
+                          << " new_hbt=" << c.new_hbt_id
+                          << " reason=wirelength obj_before=" << base_obj
+                          << " obj_after=" << cand_obj
+                          << " wl_before=" << base_t.total_wirelength
+                          << " wl_after=" << cand_timing.total_wirelength
+                          << " delay_before=" << base_max_delay
+                          << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
+            }
+            rollbackToSnapshot(result, snap, hbt_manager_, hbt_snapshot);
+            continue;
+        }
+        if (!hbt_ok) {
+            stats.rejected_by_hbt_conflict++;
+            if (params_.verbose && c.type == EditType::kSwapHBT) {
+                std::cout << "[NetReRoute][reject] net=" << net.name
+                          << " type=hbt_swap old_hbt=" << c.old_hbt_id
+                          << " new_hbt=" << c.new_hbt_id
+                          << " reason=hbt_count obj_before=" << base_obj
+                          << " obj_after=" << cand_obj << "\n";
+            }
+            rollbackToSnapshot(result, snap, hbt_manager_, hbt_snapshot);
+            continue;
+        }
+        if (!delay_ok) {
+            stats.rejected_by_delay++;
+            if (params_.verbose && c.type == EditType::kSwapHBT) {
+                std::cout << "[NetReRoute][reject] net=" << net.name
+                          << " type=hbt_swap old_hbt=" << c.old_hbt_id
+                          << " new_hbt=" << c.new_hbt_id
+                          << " reason=delay obj_before=" << base_obj
+                          << " obj_after=" << cand_obj
+                          << " wl_before=" << base_t.total_wirelength
+                          << " wl_after=" << cand_timing.total_wirelength
+                          << " delay_before=" << base_max_delay
+                          << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
+            }
+            rollbackToSnapshot(result, snap, hbt_manager_, hbt_snapshot);
+            continue;
+        }
+        if (!(cand_obj + 1e-12 < best_obj)) {
+            stats.rejected_by_no_objective_improvement++;
+            if (params_.verbose && c.type == EditType::kSwapHBT) {
+                std::cout << "[NetReRoute][reject] net=" << net.name
+                          << " type=hbt_swap old_hbt=" << c.old_hbt_id
+                          << " new_hbt=" << c.new_hbt_id
+                          << " reason=no_objective_improvement obj_before=" << best_obj
+                          << " obj_after=" << cand_obj << "\n";
+            }
+            rollbackToSnapshot(result, snap, hbt_manager_, hbt_snapshot);
+            continue;
+        }
+
+        found = true;
+        best_result = result;
+        bestc = c;
+        best_obj = cand_obj;
+        best_force_accepted = false;
+        rollbackToSnapshot(result, snap, hbt_manager_, hbt_snapshot);
     }
-    if (!found)
+
+    if (!found) {
         return false;
-    std::string fr;
-    if (!applyRipupCandidate(net, result, bestc, hbt_manager_, fr))
+    }
+
+    std::string final_fail;
+    if (!applyRipupCandidate(net, result, bestc, hbt_manager_, final_fail)) {
+        if (best_force_accepted) {
+            stats.rejected_by_force_verify_failed++;
+        }
+        if (params_.verbose) {
+            std::cout << "[NetReRoute][reject] net=" << net.name
+                      << " final_apply_failed reason=" << final_fail << "\n";
+        }
         return false;
+    }
+
+    if (bestc.type == EditType::kSwapHBT) {
+        std::string verify_reason;
+        if (!verifyHBTSwapApplied(result, bestc.old_hbt_id, bestc.new_hbt_id, verify_reason)) {
+            stats.rejected_by_hbt_swap_not_applied++;
+            if (params_.verbose) {
+                std::cout << "[NetReRoute][reject] net=" << net.name
+                          << " final_verify_failed reason=" << verify_reason << "\n";
+            }
+            return false;
+        }
+    }
+
     stats.accepted_candidates++;
-    if (bestc.type == EditType::kRipupOneSinkBranch) stats.accepted_ripup_candidates++;
-    else if (bestc.type == EditType::kReattachSinkSameDie) stats.accepted_reattach_candidates++;
-    else if (bestc.type == EditType::kSwapHBT) stats.accepted_hbt_swap_candidates++;
-    else if (bestc.type == EditType::kCrossDieRipupViaHBT) stats.accepted_cross_die_ripup_candidates++;
-    else if (bestc.type == EditType::kInsertHBT) stats.accepted_hbt_insert_candidates++;
-    else if (bestc.type == EditType::kRemoveHBT) stats.accepted_hbt_remove_candidates++;
+    if (bestc.type == EditType::kRipupOneSinkBranch) {
+        stats.accepted_ripup_candidates++;
+    } else if (bestc.type == EditType::kReattachSinkSameDie) {
+        stats.accepted_reattach_candidates++;
+    } else if (bestc.type == EditType::kSwapHBT) {
+        stats.accepted_hbt_swap_candidates++;
+    } else if (bestc.type == EditType::kCrossDieRipupViaHBT) {
+        stats.accepted_cross_die_ripup_candidates++;
+    } else if (bestc.type == EditType::kInsertHBT) {
+        stats.accepted_hbt_insert_candidates++;
+    } else if (bestc.type == EditType::kRemoveHBT) {
+        stats.accepted_hbt_remove_candidates++;
+    }
+
     stats.changed_hbt_id_count += bestc.changed_hbt_id_count;
     stats.changed_hbt_count_total += (bestc.new_hbt_count - bestc.old_hbt_count);
     stats.improved_nets++;
+    if (best_force_accepted) {
+        stats.hbt_swap_force_accept_used = 1;
+    }
 
-    auto final_timing = router_.evaluateTimingSummaryPublic(net, result);
+    const auto final_timing = router_.evaluateTimingSummaryPublic(net, result);
     result.reroute_info.touched = true;
     result.reroute_info.improved = (best_obj + 1e-12 < base_obj);
-    result.reroute_info.edit_type = (bestc.type == EditType::kRipupOneSinkBranch) ? "ripup_one_sink" : (bestc.type == EditType::kSwapHBT ? "hbt_swap" : "reattach_same_die");
+    result.reroute_info.force_accepted = best_force_accepted;
+    result.reroute_info.edit_type =
+        (bestc.type == EditType::kRipupOneSinkBranch) ? "ripup_one_sink" :
+        (bestc.type == EditType::kSwapHBT) ? "hbt_swap" :
+        (bestc.type == EditType::kCrossDieRipupViaHBT) ? "cross_die_ripup_via_hbt" :
+        (bestc.type == EditType::kInsertHBT) ? "insert_hbt" :
+        (bestc.type == EditType::kRemoveHBT) ? "remove_hbt" :
+        "reattach_same_die";
     result.reroute_info.delay_before = base_max_delay;
     result.reroute_info.delay_after = result.delay_summary.max_sink_delay;
     result.reroute_info.objective_before = base_obj;
@@ -266,15 +404,19 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
     result.reroute_info.changed_segment_count = bestc.changed_segment_count;
     result.reroute_info.hbt_delay_before = base_hbt_delay;
     result.reroute_info.hbt_delay_after = result.delay_summary.ed_hbt_delay_contrib;
-    result.reroute_info.force_accepted = (bestc.type == EditType::kSwapHBT && params_.debug_force_accept_hbt_swap);
     result.reroute_info.reject_reason.clear();
+
     if (bestc.type == EditType::kSwapHBT) {
-        const int force = (bestc.type == EditType::kSwapHBT && params_.debug_force_accept_hbt_swap) ? 1 : 0;
-        std::cout << "[NetReRoute][accept] net=" << net.name << " type=hbt_swap old_hbt=" << bestc.old_hbt_id
-                  << " new_hbt=" << bestc.new_hbt_id << " force=" << force << " obj_before=" << base_obj
-                  << " obj_after=" << best_obj << " delay_before=" << base_max_delay
+        std::cout << "[NetReRoute][accept] net=" << net.name
+                  << " type=hbt_swap old_hbt=" << bestc.old_hbt_id
+                  << " new_hbt=" << bestc.new_hbt_id
+                  << " force=" << (best_force_accepted ? 1 : 0)
+                  << " obj_before=" << base_obj
+                  << " obj_after=" << best_obj
+                  << " delay_before=" << base_max_delay
                   << " delay_after=" << result.delay_summary.max_sink_delay << "\n";
     }
+
     return true;
 }
 
@@ -495,10 +637,35 @@ bool CriticalNetOptimizer::buildCrossDieBranchViaHBT(const RoutedPoint& parent_p
 }
 
 bool CriticalNetOptimizer::verifyHBTSwapApplied(const NetRouteResult& result, int old_hbt_id, int new_hbt_id, std::string& reason) const {
-    bool has_new = false, has_new_node=false;
-    for (const auto& s : result.segments) if (s.uses_hbt && s.hbt_id == new_hbt_id) has_new = true;
-    for (const auto& n : result.tree_nodes) if (n.assigned_hbt_id == new_hbt_id) has_new_node=true;
-    if (!has_new || !has_new_node) { reason = "hbt_swap_not_reflected_in_topology"; return false; }
+    if (new_hbt_id < 0 || new_hbt_id == old_hbt_id) {
+        reason = "invalid_or_unchanged_hbt_id";
+        return false;
+    }
+
+    bool has_new_segment = false;
+    bool has_new_node = false;
+    for (const auto& s : result.segments) {
+        if (s.uses_hbt && s.hbt_id == new_hbt_id) {
+            has_new_segment = true;
+            break;
+        }
+    }
+    for (const auto& n : result.tree_nodes) {
+        if (n.assigned_hbt_id == new_hbt_id) {
+            has_new_node = true;
+            break;
+        }
+    }
+
+    // A valid swap must be reflected in the routed topology.  Segment-level
+    // evidence is the most important because the plot data and EDCompute walk
+    // the segment list.  The tree-node marker is expected to be updated by
+    // replaceSinkIncomingBranch(), but we accept either representation to avoid
+    // falsely rejecting a valid segment update in older intermediate states.
+    if (!has_new_segment && !has_new_node) {
+        reason = "hbt_swap_not_reflected_in_topology";
+        return false;
+    }
     return true;
 }
 
