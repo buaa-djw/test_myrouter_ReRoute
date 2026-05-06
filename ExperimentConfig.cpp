@@ -87,6 +87,14 @@ bool ExperimentConfig::loadFromFile(const std::string& p, ExperimentConfig& c, s
         c.reroute.enable_reattach = gb(rr, "enable_reattach", c.reroute.enable_reattach);
         c.reroute.enable_ripup = gb(rr, "enable_ripup", c.reroute.enable_ripup);
         c.reroute.enable_hbt_swap = gb(rr, "enable_hbt_swap", c.reroute.enable_hbt_swap);
+        c.reroute.enable_edge_relocation = gb(rr, "enable_edge_relocation", c.reroute.enable_edge_relocation);
+        c.reroute.enable_hbt_insert = gb(rr, "enable_hbt_insert", c.reroute.enable_hbt_insert);
+        c.reroute.enable_hbt_remove = gb(rr, "enable_hbt_remove", c.reroute.enable_hbt_remove);
+        c.reroute.enable_cross_die_detour = gb(rr, "enable_cross_die_detour", c.reroute.enable_cross_die_detour);
+        c.reroute.debug_force_accept_cross_die_detour = gb(rr, "debug_force_accept_cross_die_detour", c.reroute.debug_force_accept_cross_die_detour);
+        c.reroute.max_hbt_candidates_per_branch = gi(rr, "max_hbt_candidates_per_branch", c.reroute.max_hbt_candidates_per_branch);
+        c.reroute.debug = gb(rr, "debug", c.reroute.debug);
+
         c.reroute.beam_width = gi(rr, "beam_width", c.reroute.beam_width);
         c.reroute.objective_weight_max_delay = gd(rr, "objective_weight_max_delay", c.reroute.objective_weight_max_delay);
         c.reroute.objective_weight_avg_delay = gd(rr, "objective_weight_avg_delay", c.reroute.objective_weight_avg_delay);
