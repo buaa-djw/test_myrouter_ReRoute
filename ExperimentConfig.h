@@ -25,6 +25,7 @@ struct ExperimentConfig {
         int max_local_hbt_candidates = 24;
         int max_hbt_nearest_k = 16;
         bool verbose = true;
+        bool debug = false;
         std::string target_net_type = "all";
         bool debug_force_accept_hbt_swap = false;
     } pd_tree;
@@ -85,6 +86,7 @@ struct ExperimentConfig {
         double objective_weight_hbt_conflict = 1000000.0;
         bool accept_if_max_delay_improves = true;
         bool verbose = true;
+        bool debug = false;
         std::string target_net_type = "all";
         bool debug_force_accept_hbt_swap = false;
     } reroute;

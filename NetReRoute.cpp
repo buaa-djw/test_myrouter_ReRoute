@@ -197,12 +197,16 @@ bool CriticalNetOptimizer::optimizeOneNet(const Net &net, NetRouteResult &result
             std::cout << "[NetReRoute][HBT-SWAP][candidate] net=" << net.name
                       << " old_hbt=" << c.old_hbt_id
                       << " new_hbt=" << c.new_hbt_id
-                      << " old_wl=" << base_t.total_wirelength
-                      << " new_wl=" << cand_timing.total_wirelength
-                      << " old_delay=" << snap.delay_summary.max_sink_delay
-                      << " new_delay=" << result.delay_summary.max_sink_delay
-                      << " old_obj=" << base_obj
-                      << " new_obj=" << cand_obj << "\n";
+                      << " old_wl=" << ev.wirelength_before
+                      << " new_wl=" << ev.wirelength_after
+                      << " old_delay=" << ev.max_delay_before
+                      << " new_delay=" << ev.max_delay_after
+                      << " old_avg=" << ev.avg_delay_before
+                      << " new_avg=" << ev.avg_delay_after
+                      << " old_hbt_cnt=" << ev.hbt_count_before
+                      << " new_hbt_cnt=" << ev.hbt_count_after
+                      << " old_obj=" << ev.objective_before
+                      << " new_obj=" << ev.objective_after << "\n";
         }
 
         if (force_mode) {

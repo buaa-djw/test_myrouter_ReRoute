@@ -1,0 +1,26 @@
+{
+  "experiment_name": "baseline_no_reroute",
+  "benchmark": "gcd",
+  "input": {
+    "common_lef": "test/asap7_nangate45_2A6M10M.lef",
+    "upper_lef": "test/asap7sc7p5t_28_R_1x_220121a.upper.processed.lef",
+    "bottom_lef": "test/NangateOpenCellLibrary.macro.mod.bottom.processed.lef",
+    "hbt_lef": "test/asap7_nangate45_2A6M10M.hbtPitch_0p5.lef",
+    "def_file": "test/gcd.def",
+    "extra_lefs": []
+  },
+  "output": {
+    "output_dir": "results/baseline_no_reroute",
+    "summary_report": "summary.txt",
+    "net_info": "net_info.txt",
+    "plot_data_dir": "plot_data",
+    "plot_dir": "plots",
+    "enable_plot_generation": false,
+    "dump_2d_plot_data": true,
+    "dump_3d_plot_data": true
+  },
+  "cost_mode": "proposed",
+  "pd_tree": {"target_net_type":"all","verbose":true},
+  "report_cost": {"coef_wire_delay":1.0,"coef_parent_load_delay":1.0,"coef_hbt_rc_delay":1.0},
+  "reroute": {"enable": false, "top_k_nets": 20, "max_candidates_per_net": 20, "max_wirelength_growth_ratio": 0.05, "max_extra_hbts": 0, "enable_reattach": true, "enable_ripup": true, "enable_hbt_swap": false, "enable_hbt_insert": false, "enable_hbt_remove": false, "enable_cross_die_ripup": false, "enable_cross_layer_detour": false, "debug_force_accept_hbt_swap": false, "debug_force_accept_hbt_insert": false, "debug_force_accept_hbt_remove": false, "debug_force_accept_cross_die_ripup": false, "verbose": true, "debug": false}
+}

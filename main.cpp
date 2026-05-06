@@ -333,6 +333,9 @@ int main(int argc, char** argv)
         rr_params.min_predicted_gain_for_hbt_insert = cfg.reroute.min_predicted_gain_for_hbt_insert;
         rr_params.min_predicted_gain_for_hbt_remove = cfg.reroute.min_predicted_gain_for_hbt_remove;
         rr_params.min_predicted_gain_for_hbt_swap = cfg.reroute.min_predicted_gain_for_hbt_swap;
+        if (cfg.reroute.enable_cross_layer_detour) {
+            std::cout << "[main][reroute] cross_layer_detour is configured but not implemented in this build\n";
+        }
         CriticalNetOptimizer optimizer(db, grid, router, hbt_manager, rr_params);
         reroute_stats = optimizer.optimize(results);
         hbt_manager.rebuildFromRouteResults(results, &std::cout);
@@ -350,6 +353,8 @@ int main(int argc, char** argv)
                   << " tried=" << reroute_stats.tried_candidates
                   << " accepted=" << reroute_stats.accepted_candidates
                   << "\n";
+    } else {
+        std::cout << "[main][reroute] reroute disabled by config\n";
     }
 
     // ------------------------------------------------------------
