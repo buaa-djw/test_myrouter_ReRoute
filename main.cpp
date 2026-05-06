@@ -307,8 +307,15 @@ int main(int argc, char** argv)
         rr_params.max_wirelength_growth_ratio = cfg.reroute.max_wirelength_growth_ratio;
         rr_params.max_extra_hbts = cfg.reroute.max_extra_hbts;
         rr_params.enable_reattach = cfg.reroute.enable_reattach;
+        rr_params.enable_edge_relocation = cfg.reroute.enable_edge_relocation;
         rr_params.enable_ripup = cfg.reroute.enable_ripup;
         rr_params.enable_hbt_swap = cfg.reroute.enable_hbt_swap;
+        rr_params.enable_hbt_insert = cfg.reroute.enable_hbt_insert;
+        rr_params.enable_hbt_remove = cfg.reroute.enable_hbt_remove;
+        rr_params.enable_cross_die_detour = cfg.reroute.enable_cross_die_detour;
+        rr_params.debug_force_accept_cross_die_detour = cfg.reroute.debug_force_accept_cross_die_detour;
+        rr_params.max_hbt_candidates_per_branch = cfg.reroute.max_hbt_candidates_per_branch;
+        rr_params.debug = cfg.reroute.debug;
         rr_params.beam_width = cfg.reroute.beam_width;
         rr_params.objective_weight_max_delay = cfg.reroute.objective_weight_max_delay;
         rr_params.objective_weight_avg_delay = cfg.reroute.objective_weight_avg_delay;

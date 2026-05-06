@@ -57,8 +57,15 @@ struct ExperimentConfig {
         double max_wirelength_growth_ratio = 0.05;
         int max_extra_hbts = 0;
         bool enable_reattach = true;
+        bool enable_edge_relocation = true;
         bool enable_ripup = false;
         bool enable_hbt_swap = false;
+        bool enable_hbt_insert = false;
+        bool enable_hbt_remove = false;
+        bool enable_cross_die_detour = false;
+        bool debug_force_accept_cross_die_detour = false;
+        int max_hbt_candidates_per_branch = 8;
+        bool debug = false;
         int beam_width = 4;
         double objective_weight_max_delay = 1.0;
         double objective_weight_avg_delay = 0.2;

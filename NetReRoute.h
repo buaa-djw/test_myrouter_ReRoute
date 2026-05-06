@@ -8,102 +8,49 @@
 #include <string>
 #include <vector>
 
-class CriticalNetOptimizer
-{
+class CriticalNetOptimizer {
 public:
     struct Params {
         int top_k_nets = 20;
-        int max_iterations_per_net = 10;
+        int max_iterations_per_net = 20;
+        int max_hbt_candidates_per_branch = 8;
         double max_wirelength_growth_ratio = 0.05;
-        int max_extra_hbts = 0;
+        int max_extra_hbts = 1;
+        bool enable_edge_relocation = true;
         bool enable_reattach = true;
-        bool enable_ripup = false;
-        bool enable_hbt_swap = false;
-        double objective_weight_max_delay = 1.0;
-        double objective_weight_avg_delay = 0.2;
-        double objective_weight_wirelength_growth = 0.05;
-        double objective_weight_hbt_count = 0.1;
-        double objective_weight_hbt_delay = 0.2;
+        bool enable_ripup = true;
+        bool enable_hbt_swap = true;
+        bool enable_hbt_insert = true;
+        bool enable_hbt_remove = true;
+        bool enable_cross_die_detour = true;
         int beam_width = 4;
+        double objective_weight_wirelength_growth = 0.05;
+        double objective_weight_hbt_delay = 0.0;
+        bool debug_force_accept_cross_die_detour = false;
+        double objective_weight_max_delay = 1.0;
+        double objective_weight_avg_delay = 0.35;
+        double objective_weight_critical_sink_delay = 0.9;
+        double objective_weight_wirelength = 0.05;
+        double objective_weight_hbt_count = 0.08;
         bool verbose = true;
+        bool debug = false;
     };
 
     struct OptimizationStats {
-        int visited_nets = 0;
-        int improved_nets = 0;
-        double total_avg_delay_before = 0.0;
-        double total_avg_delay_after = 0.0;
-        double total_max_delay_before = 0.0;
-        double total_max_delay_after = 0.0;
-        int tried_candidates = 0;
-        int accepted_candidates = 0;
-        int rejected_by_topology = 0;
-        int rejected_by_delay = 0;
-        int rejected_by_wirelength = 0;
-        int rejected_by_hbt_conflict = 0;
-        int hbt_conflict_before = 0;
-        int hbt_conflict_after = 0;
-        double total_objective_before = 0.0;
-        double total_objective_after = 0.0;
+        int visited_nets = 0, improved_nets = 0, tried_candidates = 0, accepted_candidates = 0;
+        int tried_edge_relocation = 0, accepted_edge_relocation = 0;
+        int tried_ripup = 0, accepted_ripup = 0;
+        int tried_hbt_swap = 0, accepted_hbt_swap = 0;
+        int tried_hbt_insert = 0, accepted_hbt_insert = 0;
+        int tried_hbt_remove = 0, accepted_hbt_remove = 0;
+        int tried_cross_die_detour = 0, accepted_cross_die_detour = 0;
+        int rejected_by_topology = 0, rejected_by_delay = 0, rejected_by_wirelength = 0, rejected_by_hbt_conflict = 0;
+        int rejected_by_no_free_hbt = 0, rejected_by_no_better_parent = 0, rejected_by_no_delay_gain = 0;
+        int hbt_conflict_before = 0, hbt_conflict_after = 0;
     };
 
-    struct CriticalNetRecord {
-        int result_index = -1;
-        int net_index = -1;
-        std::string net_name;
-        double avg_delay = 0.0;
-        double max_delay = 0.0;
-        int max_pin_index = -1;
-    };
-
-    enum class EditType {
-        kReattachSinkSameDie,
-        kSwapHBT,
-        kRipupOneSinkBranch
-    };
-
-    struct NetEditCandidate {
-        EditType type = EditType::kReattachSinkSameDie;
-        int target_pin_index = -1;
-        int target_tree_node = -1;
-        int new_parent_tree_index = -1;
-        int new_hbt_id = -1;
-    };
-
-public:
-    CriticalNetOptimizer(const RouterDB& db,
-                         const HybridGrid& grid,
-                         const PDTreeRouter& router,
-                         HBTResourceManager& hbt_manager,
-                         const Params& params);
-
+    CriticalNetOptimizer(const RouterDB&, const HybridGrid&, const PDTreeRouter&, HBTResourceManager&, const Params&);
     OptimizationStats optimize(std::vector<NetRouteResult>& results) const;
-
 private:
-    std::vector<CriticalNetRecord> collectCriticalNets(const std::vector<NetRouteResult>& results) const;
-    bool optimizeOneNet(const Net& net, NetRouteResult& result, OptimizationStats& stats) const;
-
-    int findTreeNodeForPin(const NetRouteResult& result, int pin_index) const;
-    bool isInSubtree(const NetRouteResult& result, int root_node, int query_node) const;
-    bool replaceSinkIncomingBranch(const Net& net,
-                                   NetRouteResult& result,
-                                   int sink_tree_node,
-                                   int new_parent_tree_index,
-                                   const std::vector<RoutedSegment>& new_segments,
-                                   const RoutedPoint& sink_point) const;
-    bool rebuildTreeStatistics(const Net& net, NetRouteResult& result) const;
-
-    double evaluatePostOptimizationObjective(const NetRouteResult& result,
-                                             const Net& net) const;
-
-    std::vector<NetEditCandidate> generateHBTSwapCandidates(const Net& net,
-                                                             const NetRouteResult& result,
-                                                             int sink_tree_node) const;
-
-private:
-    const RouterDB& db_;
-    const HybridGrid& grid_;
-    const PDTreeRouter& router_;
-    HBTResourceManager& hbt_manager_;
-    Params params_;
+    const RouterDB& db_; const HybridGrid& grid_; const PDTreeRouter& router_; HBTResourceManager& hbt_manager_; Params params_;
 };
