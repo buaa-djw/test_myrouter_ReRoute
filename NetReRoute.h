@@ -22,6 +22,8 @@ public:
         bool enable_hbt_swap = false;
         bool enable_hbt_insert = false;
         bool enable_hbt_remove = false;
+        bool enable_cross_die_ripup = false;
+        bool enable_cross_layer_detour = false;
         double objective_weight_max_delay = 1.0;
         double objective_weight_avg_delay = 0.2;
         double objective_weight_wirelength_growth = 0.05;
@@ -32,6 +34,8 @@ public:
         bool debug_force_accept_hbt_swap = false;
         bool debug_force_accept_hbt_insert = false;
         bool debug_force_accept_hbt_remove = false;
+        bool debug_force_accept_cross_die_ripup = false;
+        bool debug_force_accept_cross_layer_detour = false;
         bool allow_same_die_hbt_detour = false;
         int max_hbt_insert_candidates_per_branch = 8;
         int max_hbt_remove_candidates_per_branch = 8;

@@ -311,6 +311,8 @@ int main(int argc, char** argv)
         rr_params.enable_hbt_swap = cfg.reroute.enable_hbt_swap;
         rr_params.enable_hbt_insert = cfg.reroute.enable_hbt_insert;
         rr_params.enable_hbt_remove = cfg.reroute.enable_hbt_remove;
+        rr_params.enable_cross_die_ripup = cfg.reroute.enable_cross_die_ripup;
+        rr_params.enable_cross_layer_detour = cfg.reroute.enable_cross_layer_detour;
         rr_params.beam_width = cfg.reroute.beam_width;
         rr_params.objective_weight_max_delay = cfg.reroute.objective_weight_max_delay;
         rr_params.objective_weight_avg_delay = cfg.reroute.objective_weight_avg_delay;
@@ -322,6 +324,8 @@ int main(int argc, char** argv)
         rr_params.debug_force_accept_hbt_swap = cfg.reroute.debug_force_accept_hbt_swap;
         rr_params.debug_force_accept_hbt_insert = cfg.reroute.debug_force_accept_hbt_insert;
         rr_params.debug_force_accept_hbt_remove = cfg.reroute.debug_force_accept_hbt_remove;
+        rr_params.debug_force_accept_cross_die_ripup = cfg.reroute.debug_force_accept_cross_die_ripup;
+        rr_params.debug_force_accept_cross_layer_detour = cfg.reroute.debug_force_accept_cross_layer_detour;
         rr_params.allow_same_die_hbt_detour = cfg.reroute.allow_same_die_hbt_detour;
         rr_params.max_hbt_insert_candidates_per_branch = cfg.reroute.max_hbt_insert_candidates_per_branch;
         rr_params.max_hbt_remove_candidates_per_branch = cfg.reroute.max_hbt_remove_candidates_per_branch;

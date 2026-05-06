@@ -63,8 +63,12 @@ struct ExperimentConfig {
         bool enable_hbt_swap = false;
         bool enable_hbt_insert = false;
         bool enable_hbt_remove = false;
+        bool enable_cross_die_ripup = false;
+        bool enable_cross_layer_detour = false;
         bool debug_force_accept_hbt_insert = false;
         bool debug_force_accept_hbt_remove = false;
+        bool debug_force_accept_cross_die_ripup = false;
+        bool debug_force_accept_cross_layer_detour = false;
         int beam_width = 4;
         bool allow_same_die_hbt_detour = false;
         int max_hbt_insert_candidates_per_branch = 8;
@@ -78,6 +82,8 @@ struct ExperimentConfig {
         double objective_weight_wirelength_growth = 0.05;
         double objective_weight_hbt_count = 0.1;
         double objective_weight_hbt_delay = 0.2;
+        double objective_weight_hbt_conflict = 1000000.0;
+        bool accept_if_max_delay_improves = true;
         bool verbose = true;
         std::string target_net_type = "all";
         bool debug_force_accept_hbt_swap = false;
