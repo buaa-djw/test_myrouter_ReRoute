@@ -89,6 +89,8 @@ bool ExperimentConfig::loadFromFile(const std::string& p, ExperimentConfig& c, s
         c.reroute.enable_hbt_swap = gb(rr, "enable_hbt_swap", c.reroute.enable_hbt_swap);
         c.reroute.enable_hbt_insert = gb(rr, "enable_hbt_insert", c.reroute.enable_hbt_insert);
         c.reroute.enable_hbt_remove = gb(rr, "enable_hbt_remove", c.reroute.enable_hbt_remove);
+        c.reroute.enable_cross_die_ripup = gb(rr, "enable_cross_die_ripup", c.reroute.enable_cross_die_ripup);
+        c.reroute.enable_cross_layer_detour = gb(rr, "enable_cross_layer_detour", c.reroute.enable_cross_layer_detour);
         c.reroute.beam_width = gi(rr, "beam_width", c.reroute.beam_width);
         c.reroute.objective_weight_max_delay = gd(rr, "objective_weight_max_delay", c.reroute.objective_weight_max_delay);
         c.reroute.objective_weight_avg_delay = gd(rr, "objective_weight_avg_delay", c.reroute.objective_weight_avg_delay);
@@ -100,6 +102,8 @@ bool ExperimentConfig::loadFromFile(const std::string& p, ExperimentConfig& c, s
         c.reroute.debug_force_accept_hbt_swap = gb(rr, "debug_force_accept_hbt_swap", c.reroute.debug_force_accept_hbt_swap);
         c.reroute.debug_force_accept_hbt_insert = gb(rr, "debug_force_accept_hbt_insert", c.reroute.debug_force_accept_hbt_insert);
         c.reroute.debug_force_accept_hbt_remove = gb(rr, "debug_force_accept_hbt_remove", c.reroute.debug_force_accept_hbt_remove);
+        c.reroute.debug_force_accept_cross_die_ripup = gb(rr, "debug_force_accept_cross_die_ripup", c.reroute.debug_force_accept_cross_die_ripup);
+        c.reroute.debug_force_accept_cross_layer_detour = gb(rr, "debug_force_accept_cross_layer_detour", c.reroute.debug_force_accept_cross_layer_detour);
         c.reroute.debug_force_accept_hbt_swap = gb(rr, "accept_hbt_swap_if_topology_valid", c.reroute.debug_force_accept_hbt_swap);
         c.reroute.allow_same_die_hbt_detour = gb(rr, "allow_same_die_hbt_detour", c.reroute.allow_same_die_hbt_detour);
         c.reroute.max_hbt_insert_candidates_per_branch = gi(rr, "max_hbt_insert_candidates_per_branch", c.reroute.max_hbt_insert_candidates_per_branch);
@@ -108,6 +112,16 @@ bool ExperimentConfig::loadFromFile(const std::string& p, ExperimentConfig& c, s
         c.reroute.min_predicted_gain_for_hbt_insert = gd(rr, "min_predicted_gain_for_hbt_insert", c.reroute.min_predicted_gain_for_hbt_insert);
         c.reroute.min_predicted_gain_for_hbt_remove = gd(rr, "min_predicted_gain_for_hbt_remove", c.reroute.min_predicted_gain_for_hbt_remove);
         c.reroute.min_predicted_gain_for_hbt_swap = gd(rr, "min_predicted_gain_for_hbt_swap", c.reroute.min_predicted_gain_for_hbt_swap);
+        if (rr.contains("reroute_objective")) {
+            const auto& ro = rr["reroute_objective"];
+            c.reroute.objective_weight_max_delay = gd(ro, "weight_max_delay", c.reroute.objective_weight_max_delay);
+            c.reroute.objective_weight_avg_delay = gd(ro, "weight_avg_delay", c.reroute.objective_weight_avg_delay);
+            c.reroute.objective_weight_hbt_delay = gd(ro, "weight_hbt_delay", c.reroute.objective_weight_hbt_delay);
+            c.reroute.objective_weight_wirelength_growth = gd(ro, "weight_wirelength_growth", c.reroute.objective_weight_wirelength_growth);
+            c.reroute.objective_weight_hbt_count = gd(ro, "weight_extra_hbt", c.reroute.objective_weight_hbt_count);
+            c.reroute.objective_weight_hbt_conflict = gd(ro, "weight_hbt_conflict", c.reroute.objective_weight_hbt_conflict);
+            c.reroute.accept_if_max_delay_improves = gb(ro, "accept_if_max_delay_improves", c.reroute.accept_if_max_delay_improves);
+        }
     }
     if (j.contains("debug")) {
         auto& d = j["debug"];
@@ -149,4 +163,4 @@ bool ExperimentConfig::loadFromFile(const std::string& p, ExperimentConfig& c, s
 
 bool ExperimentConfig::validate(std::string& e) const { if(input.common_lef.empty()||input.hbt_lef.empty()||input.upper_lef.empty()||input.bottom_lef.empty()||input.def_file.empty()){e="input path missing"; return false;} return true; }
 PDTreeRouter::Params ExperimentConfig::buildRouterParams() const { PDTreeRouter::Params p; p.source_res=rc.source_res; p.default_sink_cap=rc.default_sink_cap; p.hbt_res=rc.hbt_res*rc.hbt_rc_scale; p.hbt_cap=rc.hbt_cap*rc.hbt_rc_scale; p.max_candidate_parents=pd_tree.max_candidate_parents; p.max_candidate_hbts=pd_tree.max_candidate_hbts; p.beam_width_3d=pd_tree.beam_width_3d; p.beam_branch_candidates_3d=pd_tree.beam_branch_candidates_3d; p.max_local_hbt_candidates=pd_tree.max_local_hbt_candidates; p.max_hbt_nearest_k=pd_tree.max_hbt_nearest_k; p.verbose=pd_tree.verbose; p.enable_hbt_inner_node_optimization=false; p.dump_candidate_cost_debug=debug.dump_candidate_cost; p.report_cost=report_cost; p.top_wire_r_scale = rc.top_wire_r_scale; p.top_wire_c_scale = rc.top_wire_c_scale; p.bottom_wire_r_scale = rc.bottom_wire_r_scale; p.bottom_wire_c_scale = rc.bottom_wire_c_scale; p.traditional_pdtree = traditional_pdtree; if (cost_mode == "traditional_pdtree") { p.cost_mode = PDTreeRouter::CostMode::kTraditionalPDTree; } else if (cost_mode == "baseline_rc_only") { p.cost_mode = PDTreeRouter::CostMode::kBaselineRcOnly; } else { p.cost_mode = PDTreeRouter::CostMode::kProposed; } return p; }
-std::string ExperimentConfig::dumpJsonString() const { json j; j["experiment_name"]=experiment_name; j["benchmark"]=benchmark; j["reroute"]["enable"]=reroute.enable; j["reroute"]["enable_reattach"]=reroute.enable_reattach; j["reroute"]["enable_hbt_swap"]=reroute.enable_hbt_swap; j["reroute"]["enable_hbt_insert"]=reroute.enable_hbt_insert; j["reroute"]["enable_hbt_remove"]=reroute.enable_hbt_remove; j["reroute"]["debug_force_accept_hbt_swap"]=reroute.debug_force_accept_hbt_swap; j["reroute"]["debug_force_accept_hbt_insert"]=reroute.debug_force_accept_hbt_insert; j["reroute"]["debug_force_accept_hbt_remove"]=reroute.debug_force_accept_hbt_remove; return j.dump(2); }
+std::string ExperimentConfig::dumpJsonString() const { json j; j["experiment_name"]=experiment_name; j["benchmark"]=benchmark; j["reroute"]["enable"]=reroute.enable; j["reroute"]["top_k_nets"]=reroute.top_k_nets; j["reroute"]["max_iterations_per_net"]=reroute.max_iterations_per_net; j["reroute"]["max_wirelength_growth_ratio"]=reroute.max_wirelength_growth_ratio; j["reroute"]["max_extra_hbts"]=reroute.max_extra_hbts; j["reroute"]["enable_reattach"]=reroute.enable_reattach; j["reroute"]["enable_ripup"]=reroute.enable_ripup; j["reroute"]["enable_hbt_swap"]=reroute.enable_hbt_swap; j["reroute"]["enable_hbt_insert"]=reroute.enable_hbt_insert; j["reroute"]["enable_hbt_remove"]=reroute.enable_hbt_remove; j["reroute"]["enable_cross_die_ripup"]=reroute.enable_cross_die_ripup; j["reroute"]["enable_cross_layer_detour"]=reroute.enable_cross_layer_detour; j["reroute"]["target_net_type"]=reroute.target_net_type; j["reroute"]["debug_force_accept_hbt_swap"]=reroute.debug_force_accept_hbt_swap; j["reroute"]["debug_force_accept_hbt_insert"]=reroute.debug_force_accept_hbt_insert; j["reroute"]["debug_force_accept_hbt_remove"]=reroute.debug_force_accept_hbt_remove; j["reroute"]["debug_force_accept_cross_die_ripup"]=reroute.debug_force_accept_cross_die_ripup; j["reroute"]["debug_force_accept_cross_layer_detour"]=reroute.debug_force_accept_cross_layer_detour; j["reroute"]["verbose"]=reroute.verbose; j["reroute"]["reroute_objective"]={{"weight_max_delay",reroute.objective_weight_max_delay},{"weight_avg_delay",reroute.objective_weight_avg_delay},{"weight_hbt_delay",reroute.objective_weight_hbt_delay},{"weight_wirelength_growth",reroute.objective_weight_wirelength_growth},{"weight_extra_hbt",reroute.objective_weight_hbt_count},{"weight_hbt_conflict",reroute.objective_weight_hbt_conflict},{"accept_if_max_delay_improves",reroute.accept_if_max_delay_improves}}; return j.dump(2); }

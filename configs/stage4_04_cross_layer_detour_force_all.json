@@ -1,0 +1,6 @@
+{
+  "experiment_name": "stage4_04_cross_layer_detour_force_all",
+  "output": {"output_dir": "results/stage4_04_cross_layer_detour_force_all"},
+  "input": {"common_lef":"test/asap7_nangate45_2A6M10M.lef","hbt_lef":"test/asap7_nangate45_2A6M10M.hbtPitch_0p2.lef","upper_lef":"test/asap7sc7p5t_28_R_1x_220121a.upper.processed.lef","bottom_lef":"test/NangateOpenCellLibrary.macro.mod.bottom.processed.lef","def_file":"test/gcd.def"},
+  "reroute": {"enable":true,"enable_cross_layer_detour":true,"debug_force_accept_cross_layer_detour":true,"target_net_type":"all","max_extra_hbts":2}
+}

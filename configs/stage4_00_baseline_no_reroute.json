@@ -1,0 +1,12 @@
+{
+  "experiment_name": "stage4_00_baseline_no_reroute",
+  "output": {"output_dir": "results/stage4_00_baseline_no_reroute"},
+  "input": {
+    "common_lef": "test/asap7_nangate45_2A6M10M.lef",
+    "hbt_lef": "test/asap7_nangate45_2A6M10M.hbtPitch_0p2.lef",
+    "upper_lef": "test/asap7sc7p5t_28_R_1x_220121a.upper.processed.lef",
+    "bottom_lef": "test/NangateOpenCellLibrary.macro.mod.bottom.processed.lef",
+    "def_file": "test/gcd.def"
+  },
+  "reroute": {"enable": false}
+}
