@@ -10,6 +10,21 @@
 
 class CriticalNetOptimizer {
 public:
+    enum class EditType { kEdgeRelocation, kRipupOneSink, kHBTSwap, kHBTInsert, kHBTRemove, kCrossDieRipupViaHBT };
+    struct NetEditCandidate {
+        EditType type = EditType::kRipupOneSink;
+        int sink_pin_index = -1;
+        int sink_tree_node = -1;
+        int old_parent_tree_node = -1;
+        int new_parent_tree_node = -1;
+        int new_hbt_id = -1;
+        std::vector<int> new_hbt_ids;
+        std::vector<int> inserted_hbt_ids;
+        bool has_child_attach_point = false;
+        RoutedPoint child_attach_point;
+        std::vector<RoutedSegment> new_segments;
+        std::string reject_reason;
+    };
     struct Params {
         int top_k_nets = 20;
         int max_iterations_per_net = 20;
@@ -56,5 +71,11 @@ public:
     CriticalNetOptimizer(const RouterDB&, const HybridGrid&, const PDTreeRouter&, HBTResourceManager&, const Params&);
     OptimizationStats optimize(std::vector<NetRouteResult>& results) const;
 private:
+    std::vector<NetEditCandidate> generateCrossDieDetourCandidates(
+        const Net& net,
+        const NetRouteResult& result,
+        int sink_pin_index,
+        int sink_tree_node,
+        OptimizationStats* stats) const;
     const RouterDB& db_; const HybridGrid& grid_; const PDTreeRouter& router_; HBTResourceManager& hbt_manager_; Params params_;
 };
