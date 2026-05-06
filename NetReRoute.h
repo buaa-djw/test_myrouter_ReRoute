@@ -29,6 +29,10 @@ public:
     CriticalNetOptimizer(const RouterDB&, const HybridGrid&, const PDTreeRouter&, HBTResourceManager&, const Params&);
     OptimizationStats optimize(std::vector<NetRouteResult>& results) const;
     RerouteEvaluation evaluateCandidate(const Net& net, const NetRouteResult& base_result, const RerouteCandidate& candidate, NetRouteResult* candidate_result) const;
+    bool evaluateAndMaybeApplyCandidateForModule(const Net& net, NetRouteResult& result, const RerouteCandidate& candidate, OptimizationStats* stats, bool allow_force_accept, std::string* reject_reason) const;
+    bool trySameDieReattachForModule(const Net& net, NetRouteResult& result, int sink_tree_node, int sink_pin_index, int new_parent_tree_node, bool fixed_hbt, OptimizationStats* stats, std::string* reject_reason) const;
+    OptimizationStats runCrossDieDetourForModule(const Net& net, NetRouteResult& result) const;
+    OptimizationStats runHBTSwapForModule(const Net& net, NetRouteResult& result) const;
 
 private:
     const RouterDB& db_; const HybridGrid& grid_; const PDTreeRouter& router_; HBTResourceManager& hbt_manager_; Params params_; RouteTopologyValidator validator_;

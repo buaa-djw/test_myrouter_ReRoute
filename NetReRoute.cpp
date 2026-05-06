@@ -6,7 +6,6 @@
 #include <unordered_map>
 
 namespace {
-int treeNodeForPin(const NetRouteResult&r,int pin){for(int i=0;i<(int)r.tree_nodes.size();++i)if(r.tree_nodes[i].pin_index==pin)return i;return -1;}
 double objective(const CriticalNetOptimizer::Params& p, const PDTreeRouter::TimingSummary& t, double wl, int hbt){ return p.objective_weight_max_delay*t.max_sink_delay + p.objective_weight_avg_delay*t.avg_sink_delay + p.objective_weight_wirelength*wl + p.objective_weight_hbt_count*hbt; }
 }
 
@@ -34,6 +33,63 @@ RerouteEvaluation CriticalNetOptimizer::evaluateCandidate(const Net& net, const 
     e.accepted = e.topology_valid && e.delay_improved && e.objective_improved;
     if (!e.accepted) e.reject_reason = "no_improvement";
     return e;
+}
+
+bool CriticalNetOptimizer::evaluateAndMaybeApplyCandidateForModule(const Net& net, NetRouteResult& result, const RerouteCandidate& candidate, OptimizationStats* stats, bool allow_force_accept, std::string* reject_reason) const {
+    NetRouteResult cand; auto ev = evaluateCandidate(net, result, candidate, &cand);
+    if (stats) { ++stats->tried_candidates; if (ev.accepted) ++stats->accepted_candidates; else ++stats->rejected_candidates; }
+    if (ev.accepted || (allow_force_accept && params_.debug_force_accept)) { result = cand; if (reject_reason) reject_reason->clear(); return true; }
+    if (reject_reason) *reject_reason = ev.reject_reason;
+    return false;
+}
+
+
+bool CriticalNetOptimizer::trySameDieReattachForModule(const Net& net, NetRouteResult& result, int sink_tree_node, int sink_pin_index, int new_parent_tree_node, bool fixed_hbt, OptimizationStats* stats, std::string* reject_reason) const {
+    if (sink_tree_node < 0 || sink_tree_node >= (int)result.tree_nodes.size() || new_parent_tree_node < 0 || new_parent_tree_node >= (int)result.tree_nodes.size()) return false;
+    const auto& parent = result.tree_nodes[new_parent_tree_node];
+    const auto& sink = result.tree_nodes[sink_tree_node];
+    RerouteCandidate c; c.net_name=net.name; c.is_3d=result.is_3d; c.candidate_type=fixed_hbt?RerouteCandidateType::k3DIntraDieReattachWithFixedHBT:RerouteCandidateType::k2DReattach; c.target_sink_pin_index=sink_pin_index; c.target_sink_tree_node=sink_tree_node; c.new_parent_tree_node=new_parent_tree_node;
+    RoutedSegment seg; seg.p1=parent.point; seg.p2=sink.point; seg.uses_hbt=false; seg.hbt_id=-1; c.new_segments={seg};
+    return evaluateAndMaybeApplyCandidateForModule(net,result,c,stats,false,reject_reason);
+}
+CriticalNetOptimizer::OptimizationStats CriticalNetOptimizer::runCrossDieDetourForModule(const Net& net, NetRouteResult& result) const {
+    OptimizationStats st; if (!result.is_3d) return st;
+    int sink_node=-1; int sink_pin=result.delay_summary.max_delay_pin_index;
+    for(int i=0;i<(int)result.tree_nodes.size();++i) if(result.tree_nodes[i].pin_index==sink_pin){sink_node=i;break;}
+    if (sink_node<=0) return st;
+    const auto& sink = result.tree_nodes[sink_node];
+    for(int p=0;p<(int)result.tree_nodes.size();++p){
+        if(p==sink_node) continue; const auto& parent=result.tree_nodes[p]; if(parent.point.die==sink.point.die) continue;
+        Point2D qp{sink.point.x,sink.point.y}; auto free_hbts=hbt_manager_.collectFreeHBTsNear(grid_, qp, 4);
+        for(int hid: free_hbts){
+            const auto& hpt = grid_.hbt.getSlot(hid);
+            RoutedSegment s1{{parent.point.x,parent.point.y,parent.point.die},{hpt.x,hpt.y,parent.point.die},-1,true,hid};
+            RoutedSegment s2{{hpt.x,hpt.y,sink.point.die},{sink.point.x,sink.point.y,sink.point.die},-1,true,hid};
+            RerouteCandidate c; c.net_name=net.name; c.is_3d=true; c.candidate_type=RerouteCandidateType::k3DCrossLayerDetour; c.target_sink_pin_index=sink_pin; c.target_sink_tree_node=sink_node; c.new_parent_tree_node=p; c.new_hbt_id=hid; c.new_segments={s1,s2};
+            ++st.tried_cross_die_ripup_candidates;
+            if (evaluateAndMaybeApplyCandidateForModule(net,result,c,&st,false,nullptr)) { ++st.accepted_cross_die_ripup_candidates; st.improved_nets=1; return st; }
+        }
+    }
+    return st;
+}
+
+CriticalNetOptimizer::OptimizationStats CriticalNetOptimizer::runHBTSwapForModule(const Net& net, NetRouteResult& result) const {
+    OptimizationStats st; 
+    for (auto& seg : result.segments) {
+        if (!seg.uses_hbt || seg.hbt_id < 0) continue;
+        Point2D qp{seg.p1.x,seg.p1.y};
+        auto free_hbts = hbt_manager_.collectFreeHBTsNear(grid_, qp, 4);
+        for (int hid : free_hbts) {
+            NetRouteResult work = result;
+            for (auto& s : work.segments) if (s.uses_hbt && s.hbt_id==seg.hbt_id) s.hbt_id=hid;
+            auto v = validator_.validateNetTopology(net, work, &hbt_manager_);
+            ++st.tried_candidates;
+            if (!v.valid || !router_.annotateDelayPublic(net, work)) { ++st.rejected_candidates; continue; }
+            if (work.delay_summary.max_sink_delay + 1e-12 < result.delay_summary.max_sink_delay) { result=work; ++st.accepted_candidates; st.improved_nets=1; return st; }
+            ++st.rejected_candidates;
+        }
+    }
+    return st;
 }
 
 CriticalNetOptimizer::OptimizationStats CriticalNetOptimizer::optimize(std::vector<NetRouteResult>& results) const {
