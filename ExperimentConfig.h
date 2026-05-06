@@ -62,7 +62,9 @@ struct ExperimentConfig {
         bool enable_hbt_swap = false;
         bool enable_hbt_insert = false;
         bool enable_hbt_remove = false;
+        bool enable_cross_die_ripup = false;
         bool enable_cross_die_detour = false;
+        bool debug_force_accept_cross_die_ripup = false;
         bool debug_force_accept_cross_die_detour = false;
         int max_hbt_candidates_per_branch = 8;
         bool debug = false;
@@ -72,6 +74,7 @@ struct ExperimentConfig {
         double objective_weight_wirelength_growth = 0.05;
         double objective_weight_hbt_count = 0.1;
         double objective_weight_hbt_delay = 0.2;
+        double objective_weight_critical_sink_delay = 0.9;
         bool verbose = true;
     } reroute;
     struct Debug {

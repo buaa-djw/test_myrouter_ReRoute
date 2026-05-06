@@ -22,10 +22,12 @@ public:
         bool enable_hbt_swap = true;
         bool enable_hbt_insert = true;
         bool enable_hbt_remove = true;
+        bool enable_cross_die_ripup = false;
         bool enable_cross_die_detour = true;
         int beam_width = 4;
         double objective_weight_wirelength_growth = 0.05;
         double objective_weight_hbt_delay = 0.0;
+        bool debug_force_accept_cross_die_ripup = false;
         bool debug_force_accept_cross_die_detour = false;
         double objective_weight_max_delay = 1.0;
         double objective_weight_avg_delay = 0.35;
@@ -43,9 +45,11 @@ public:
         int tried_hbt_swap = 0, accepted_hbt_swap = 0;
         int tried_hbt_insert = 0, accepted_hbt_insert = 0;
         int tried_hbt_remove = 0, accepted_hbt_remove = 0;
-        int tried_cross_die_detour = 0, accepted_cross_die_detour = 0;
+        int tried_cross_die_ripup_candidates = 0, accepted_cross_die_ripup_candidates = 0;
         int rejected_by_topology = 0, rejected_by_delay = 0, rejected_by_wirelength = 0, rejected_by_hbt_conflict = 0;
         int rejected_by_no_free_hbt = 0, rejected_by_no_better_parent = 0, rejected_by_no_delay_gain = 0;
+        int rejected_by_cross_die_not_supported = 0, rejected_by_build_hbt_branch_failed = 0;
+        int force_accepted_cross_die_ripup_candidates = 0;
         int hbt_conflict_before = 0, hbt_conflict_after = 0;
     };
 

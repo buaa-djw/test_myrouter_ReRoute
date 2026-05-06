@@ -119,6 +119,12 @@ void writeExperimentSummary(const std::string& path,
         o << "rejected_by_delay=" << reroute_stats->rejected_by_delay << "\n";
         o << "rejected_by_wirelength=" << reroute_stats->rejected_by_wirelength << "\n";
         o << "rejected_by_hbt_conflict=" << reroute_stats->rejected_by_hbt_conflict << "\n";
+        o << "tried_cross_die_ripup_candidates=" << reroute_stats->tried_cross_die_ripup_candidates << "\n";
+        o << "accepted_cross_die_ripup_candidates=" << reroute_stats->accepted_cross_die_ripup_candidates << "\n";
+        o << "force_accepted_cross_die_ripup_candidates=" << reroute_stats->force_accepted_cross_die_ripup_candidates << "\n";
+        o << "rejected_by_no_free_hbt=" << reroute_stats->rejected_by_no_free_hbt << "\n";
+        o << "rejected_by_cross_die_not_supported=" << reroute_stats->rejected_by_cross_die_not_supported << "\n";
+        o << "rejected_by_build_hbt_branch_failed=" << reroute_stats->rejected_by_build_hbt_branch_failed << "\n";
         o << "hbt_conflict_before=" << reroute_stats->hbt_conflict_before << "\n";
         o << "hbt_conflict_after=" << reroute_stats->hbt_conflict_after << "\n";
     }
