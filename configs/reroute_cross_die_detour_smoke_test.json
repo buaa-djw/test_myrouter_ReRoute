@@ -1,6 +1,17 @@
 {
   "experiment_name": "reroute_cross_die_detour_smoke_test",
   "benchmark": "smoke",
+  "input": {
+    "common_lef": "test/asap7_nangate45_10M10M.hbPitch_0p2.lef",
+    "hbt_lef": "test/asap7_nangate45_2A6M10M.lef",
+    "upper_lef": "test/asap7sc7p5t_28_R_1x_220121a.upper.processed.lef",
+    "bottom_lef": "test/NangateOpenCellLibrary.macro.mod.bottom.processed.lef",
+    "def_file": "test/gcd.def"
+  },
+  "output": {
+    "output_dir": "results/reroute_cross_die_detour_smoke_test",
+    "summary_report": "summary.rpt"
+  },
   "reroute": {
     "enable": true,
     "target_net_type": "3d_only",
@@ -15,6 +26,7 @@
     "max_wirelength_growth_ratio": 0.20,
     "max_hbt_candidates_per_branch": 16,
     "top_k_nets": 30,
-    "verbose": true
+    "verbose": true,
+    "debug": true
   }
 }
