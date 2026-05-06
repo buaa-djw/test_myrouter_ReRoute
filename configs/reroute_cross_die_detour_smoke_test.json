@@ -1,0 +1,20 @@
+{
+  "experiment_name": "reroute_cross_die_detour_smoke_test",
+  "benchmark": "smoke",
+  "reroute": {
+    "enable": true,
+    "target_net_type": "3d_only",
+    "enable_reattach": false,
+    "enable_ripup": false,
+    "enable_hbt_swap": false,
+    "enable_cross_die_ripup": true,
+    "enable_cross_die_detour": true,
+    "debug_force_accept_cross_die_ripup": true,
+    "debug_force_accept_cross_die_detour": true,
+    "max_extra_hbts": 1,
+    "max_wirelength_growth_ratio": 0.20,
+    "max_hbt_candidates_per_branch": 16,
+    "top_k_nets": 30,
+    "verbose": true
+  }
+}

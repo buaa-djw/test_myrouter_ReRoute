@@ -312,7 +312,9 @@ int main(int argc, char** argv)
         rr_params.enable_hbt_swap = cfg.reroute.enable_hbt_swap;
         rr_params.enable_hbt_insert = cfg.reroute.enable_hbt_insert;
         rr_params.enable_hbt_remove = cfg.reroute.enable_hbt_remove;
+        rr_params.enable_cross_die_ripup = cfg.reroute.enable_cross_die_ripup;
         rr_params.enable_cross_die_detour = cfg.reroute.enable_cross_die_detour;
+        rr_params.debug_force_accept_cross_die_ripup = cfg.reroute.debug_force_accept_cross_die_ripup;
         rr_params.debug_force_accept_cross_die_detour = cfg.reroute.debug_force_accept_cross_die_detour;
         rr_params.max_hbt_candidates_per_branch = cfg.reroute.max_hbt_candidates_per_branch;
         rr_params.debug = cfg.reroute.debug;
@@ -322,6 +324,7 @@ int main(int argc, char** argv)
         rr_params.objective_weight_wirelength_growth = cfg.reroute.objective_weight_wirelength_growth;
         rr_params.objective_weight_hbt_count = cfg.reroute.objective_weight_hbt_count;
         rr_params.objective_weight_hbt_delay = cfg.reroute.objective_weight_hbt_delay;
+        rr_params.objective_weight_critical_sink_delay = cfg.reroute.objective_weight_critical_sink_delay;
         rr_params.verbose = cfg.reroute.verbose;
         CriticalNetOptimizer optimizer(db, grid, router, hbt_manager, rr_params);
         reroute_stats = optimizer.optimize(results);
@@ -403,6 +406,12 @@ int main(int argc, char** argv)
     rr_proxy.rejected_by_hbt_conflict = reroute_stats.rejected_by_hbt_conflict;
     rr_proxy.hbt_conflict_before = reroute_stats.hbt_conflict_before;
     rr_proxy.hbt_conflict_after = reroute_stats.hbt_conflict_after;
+    rr_proxy.tried_cross_die_ripup_candidates = reroute_stats.tried_cross_die_ripup_candidates;
+    rr_proxy.accepted_cross_die_ripup_candidates = reroute_stats.accepted_cross_die_ripup_candidates;
+    rr_proxy.rejected_by_no_free_hbt = reroute_stats.rejected_by_no_free_hbt;
+    rr_proxy.rejected_by_cross_die_not_supported = reroute_stats.rejected_by_cross_die_not_supported;
+    rr_proxy.rejected_by_build_hbt_branch_failed = reroute_stats.rejected_by_build_hbt_branch_failed;
+    rr_proxy.force_accepted_cross_die_ripup_candidates = reroute_stats.force_accepted_cross_die_ripup_candidates;
     writeExperimentSummary(
         (output_dir / cfg.output.summary_report).string(),
         cfg,
