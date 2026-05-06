@@ -15,6 +15,9 @@ add_executable(test_myrouter_ReRoute
   EDCompute.cpp
   HBTResourceManager.cpp
   NetReRoute.cpp
+  NetReRoute2D.cpp
+  NetReRoute3D.cpp
+  RouteTopologyValidator.cpp
   ExperimentConfig.cpp
   ExperimentSummaryWriter.cpp
   NetInfoWriter.cpp
